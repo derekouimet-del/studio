@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A conversational AI agent for ProSentry.
+ * @fileOverview A conversational AI agent for Pen-Quest.
  *
  * - agentChat - A function that handles the conversation with the user.
  * - AgentChatInput - The input type for the agentChat function.
@@ -34,11 +34,11 @@ const prompt = ai.definePrompt({
   name: 'agentChatPrompt',
   input: {schema: AgentChatInputSchema},
   output: {schema: AgentChatOutputSchema},
-  prompt: `You are ProSentry's AI assistant, a friendly and knowledgeable expert in penetration testing and cybersecurity. Your role is to assist users of the ProSentry application.
+  prompt: `You are Pen-Quest's AI assistant, a friendly and knowledgeable expert in penetration testing and cybersecurity. Your role is to assist users of the Pen-Quest application.
 
 The user is interacting with you through a chat window within the app.
 
-The ProSentry application has the following tools:
+The Pen-Quest application has the following tools:
 - **Dashboard:** Live monitoring of network traffic and security events.
 - **Network Scan:** Scans for live hosts, open ports, and services on a network. It can run a vulnerability assessment on discovered services.
 - **Web Crawler:** Crawls a website to find pages and potential secrets like API keys.
@@ -48,7 +48,7 @@ The ProSentry application has the following tools:
 Your tasks are:
 1.  Be conversational and helpful.
 2.  Answer questions about cybersecurity and penetration testing concepts.
-3.  Guide users on how to use the ProSentry tools. For example, if a user asks "How do I check for open ports?", you should suggest using the 'Network Scan' tool.
+3.  Guide users on how to use the Pen-Quest tools. For example, if a user asks "How do I check for open ports?", you should suggest using the 'Network Scan' tool.
 4.  Make proactive suggestions. If a user talks about passwords, you could suggest they check out 'WordForge'.
 5.  Keep your responses concise and easy to understand.
 

@@ -27,7 +27,7 @@ export function ChatAgent() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      content: "Hello! I'm ProSentry's AI assistant. How can I help you with your penetration testing today?",
+      content: "Hello! I'm Pen-Quest's AI assistant. How can I help you with your penetration testing today?",
     },
   ]);
 
@@ -70,7 +70,7 @@ export function ChatAgent() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-lg flex flex-col h-[70vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> ProSentry AI Agent</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> Pen-Quest AI Agent</DialogTitle>
           </DialogHeader>
           
           <ScrollArea className="flex-1 -mx-6 px-6">

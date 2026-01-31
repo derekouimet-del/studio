@@ -6,8 +6,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { ChatAgent } from '@/components/agent/chat-agent';
 
 export const metadata: Metadata = {
-  title: 'ProSentry',
-  description: 'Advanced pentest tool for professionals.',
+  title: 'Pen-Quest',
+  description: 'AI Penetration Testing',
 };
 
 export default function RootLayout({

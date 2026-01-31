@@ -18,7 +18,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
-import { ProSentryLogo } from '@/components/icons';
+import { PenQuestLogo } from '@/components/icons';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,8 +36,8 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <ProSentryLogo className="size-8 text-primary" />
-          <h2 className="text-xl font-semibold font-headline tracking-tighter">ProSentry</h2>
+          <PenQuestLogo className="size-8 text-primary" />
+          <h2 className="text-xl font-semibold uppercase tracking-wider">Pen-Quest</h2>
         </div>
       </SidebarHeader>
       <SidebarContent>
