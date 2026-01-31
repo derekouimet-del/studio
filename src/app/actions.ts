@@ -7,6 +7,7 @@ import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
 import { suggestWordlist, type WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
 import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
 import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
+import { httpHunter, type HttpHunterInput } from '@/ai/flows/http-hunter';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -65,5 +66,15 @@ export async function nmapSuggestionAction(input: NmapSuggestionInput) {
     } catch (error) {
         console.error('Nmap suggestion failed:', error);
         return { success: false, error: 'An error occurred while generating the nmap command.' };
+    }
+}
+
+export async function httpHunterAction(input: HttpHunterInput) {
+    try {
+        const result = await httpHunter(input);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('HTTP Hunter failed:', error);
+        return { success: false, error: 'An error occurred while hunting for subdomains.' };
     }
 }

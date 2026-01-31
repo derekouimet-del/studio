@@ -7,3 +7,4 @@ import '@/ai/flows/web-crawler.ts';
 import '@/ai/flows/wordlist-suggestion.ts';
 import '@/ai/flows/agent-chat.ts';
 import '@/ai/flows/nmap-suggestion.ts';
+import '@/ai/flows/http-hunter.ts';
