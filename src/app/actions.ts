@@ -6,6 +6,7 @@ import { suggestExploits, type ExploitSuggestionInput } from '@/ai/flows/exploit
 import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
 import { suggestWordlist, type WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
 import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
+import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -55,4 +56,14 @@ export async function agentChatAction(input: AgentChatInput) {
     console.error('Agent chat failed:', error);
     return { success: false, error: 'An error occurred while talking to the agent.' };
   }
+}
+
+export async function nmapSuggestionAction(input: NmapSuggestionInput) {
+    try {
+        const result = await nmapSuggestion(input);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Nmap suggestion failed:', error);
+        return { success: false, error: 'An error occurred while generating the nmap command.' };
+    }
 }
