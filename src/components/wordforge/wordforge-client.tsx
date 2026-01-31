@@ -19,14 +19,14 @@ import {
   Layers,
   Sparkles,
   Scissors,
-  CaseSensitive,
   Download,
   FileText,
   Plus,
-  ArrowRight,
-  Hash,
+  BrainCircuit,
+  LoaderCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { suggestWordlistAction } from '@/app/actions';
 
 const leetMap: { [key: string]: string } = {
   a: '4', A: '4',
@@ -48,6 +48,10 @@ export function WordForgeClient() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [aiTopic, setAiTopic] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+
   const wordCount = useMemo(() => words.length, [words]);
 
   const handleFileRead = (file: File, combine: boolean) => {
@@ -55,7 +59,7 @@ export function WordForgeClient() {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const newWords = content.split(/\s+/).filter(Boolean);
-      setWords((prev) => (combine ? [...prev, ...newWords] : newWords));
+      setWords((prev) => (combine ? [...new Set([...prev, ...newWords])] : newWords));
       if (!combine) {
         setFileName(file.name.replace('.txt', '-edited.txt'));
       }
@@ -93,15 +97,17 @@ export function WordForgeClient() {
 
   const onFileSelect = (e: React.ChangeEvent<HTMLInputElement>, combine: boolean) => {
     handleFiles(e.target.files, combine);
-    e.target.value = ''; // Reset input to allow re-upload of same file
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
-    handleFiles(e.dataTransfer.files, e.shiftKey);
-    toast({ description: 'Hold SHIFT while dropping to combine lists.'});
+    const isCombine = e.shiftKey || words.length > 0;
+    handleFiles(e.dataTransfer.files, isCombine);
+    if(words.length === 0) {
+        toast({ description: 'Hold SHIFT while dropping to combine multiple lists on first upload.'});
+    }
   };
 
   const removeDuplicates = () => {
@@ -160,6 +166,30 @@ export function WordForgeClient() {
     setWords(transformed);
     toast({ title: 'Leet Speak Applied', description: 'Converted applicable characters to 1337.'});
   }
+  
+  const handleGetSuggestions = async () => {
+    if (!aiTopic) {
+        toast({ variant: 'destructive', title: 'Topic is empty', description: 'Please enter a topic for suggestions.' });
+        return;
+    }
+    setIsSuggesting(true);
+    setAiSuggestions([]);
+    const response = await suggestWordlistAction({ topic: aiTopic, count: 15 });
+    if (response.success && response.data) {
+        setAiSuggestions(response.data.suggestions);
+    } else {
+        toast({ variant: 'destructive', title: 'Suggestion Failed', description: response.error });
+    }
+    setIsSuggesting(false);
+  };
+  
+  const addSuggestionsToList = () => {
+    const newWords = [...words, ...aiSuggestions];
+    const uniqueWords = [...new Set(newWords)];
+    setWords(uniqueWords);
+    toast({ title: 'Suggestions Added', description: `${aiSuggestions.length} new words added to the list.`});
+    setAiSuggestions([]);
+  };
 
   const handleDownload = () => {
     if (words.length === 0) {
@@ -200,11 +230,25 @@ export function WordForgeClient() {
           <span className="text-xs font-semibold">(Hold SHIFT while dropping to combine lists)</span>
         </p>
         <div className="flex gap-4">
-          <Button onClick={() => fileInputRef.current?.click()}>
+          <Button onClick={() => {
+            const el = fileInputRef.current;
+            if(el) {
+                el.onclick = (e: any) => { (e.target as HTMLInputElement).value = '' };
+                el.onchange = (e: any) => onFileSelect(e, false);
+                el.click();
+            }
+          }}>
             <FileText />
             Upload New List
           </Button>
-          <Button onClick={() => fileInputRef.current?.click()} variant="secondary" disabled={wordCount === 0}>
+          <Button onClick={() => {
+            const el = fileInputRef.current;
+             if(el) {
+                el.onclick = (e: any) => { (e.target as HTMLInputElement).value = '' };
+                el.onchange = (e: any) => onFileSelect(e, true);
+                el.click();
+            }
+          }} variant="secondary" disabled={wordCount === 0}>
             <Layers />
             Combine with List
           </Button>
@@ -215,7 +259,6 @@ export function WordForgeClient() {
           multiple
           accept=".txt,text/plain"
           className="hidden"
-          onChange={(e) => onFileSelect(e, wordCount > 0)}
         />
       </div>
 
@@ -286,6 +329,45 @@ export function WordForgeClient() {
                         <Input id="filename" value={fileName} onChange={e => setFileName(e.target.value)} />
                     </div>
                     <Button className="w-full" onClick={handleDownload}><Download/> Download List</Button>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <BrainCircuit className="text-primary" /> AI Suggestions
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="ai-topic">Topic</Label>
+                        <div className="flex items-center space-x-2">
+                            <Input 
+                                id="ai-topic" 
+                                placeholder="e.g., Company name, target hobbies..."
+                                value={aiTopic}
+                                onChange={(e) => setAiTopic(e.target.value)}
+                                disabled={isSuggesting}
+                            />
+                            <Button onClick={handleGetSuggestions} disabled={isSuggesting || !aiTopic} size="icon">
+                                {isSuggesting ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+                            </Button>
+                        </div>
+                    </div>
+                    {isSuggesting && (
+                         <div className="flex items-center justify-center p-4 space-x-2 text-muted-foreground">
+                            <LoaderCircle className="animate-spin size-4" />
+                            <span>Generating ideas...</span>
+                        </div>
+                    )}
+                    {aiSuggestions.length > 0 && (
+                        <div className="space-y-2">
+                            <Label>Generated Words</Label>
+                            <div className="font-code text-sm space-y-1 p-2 rounded-md bg-muted/50 max-h-32 overflow-y-auto border">
+                                {aiSuggestions.map((w,i) => <p key={i}>{w}</p>)}
+                            </div>
+                            <Button onClick={addSuggestionsToList} className="w-full"><Plus/> Add Suggestions to List</Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
              <Card>
