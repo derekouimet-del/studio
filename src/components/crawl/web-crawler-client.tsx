@@ -19,24 +19,40 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, LoaderCircle, KeyRound, FileCode, Link as LinkIcon } from 'lucide-react';
-import { crawlResults, foundCredentials, type CrawlResult, type FoundCredential } from '@/lib/data';
+import { Bot, LoaderCircle, KeyRound, Link as LinkIcon } from 'lucide-react';
+import { crawlWebsiteAction } from '@/app/actions';
+import type { CrawlWebsiteOutput } from '@/ai/flows/web-crawler';
+import { useToast } from '@/hooks/use-toast';
+
+type CrawlResult = CrawlWebsiteOutput['pages'][0];
+type FoundCredential = CrawlWebsiteOutput['credentials'][0];
 
 export function WebCrawlerClient() {
   const [targetUrl, setTargetUrl] = useState('http://example.com');
   const [isCrawling, setIsCrawling] = useState(false);
   const [pages, setPages] = useState<CrawlResult[]>([]);
   const [credentials, setCredentials] = useState<FoundCredential[]>([]);
+  const { toast } = useToast();
 
-  const handleCrawl = () => {
+  const handleCrawl = async () => {
     setIsCrawling(true);
     setPages([]);
     setCredentials([]);
-    setTimeout(() => {
-      setPages(crawlResults);
-      setCredentials(foundCredentials);
-      setIsCrawling(false);
-    }, 2500);
+
+    const response = await crawlWebsiteAction({ targetUrl });
+
+    if (response.success && response.data) {
+      setPages(response.data.pages || []);
+      setCredentials(response.data.credentials || []);
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Crawl Failed',
+        description: response.error,
+      });
+    }
+
+    setIsCrawling(false);
   };
   
     const getStatusBadgeVariant = (statusCode: number) => {
