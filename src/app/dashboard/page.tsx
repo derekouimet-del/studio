@@ -1,0 +1,75 @@
+import { Header } from '@/components/layout/header';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Activity, ShieldAlert, Bot, Signal } from 'lucide-react';
+import LiveTrafficChart from '@/components/dashboard/live-traffic-chart';
+
+export default function DashboardPage() {
+  return (
+    <div className="flex flex-col w-full min-h-screen">
+      <Header title="Live Monitoring" />
+      <main className="flex-1 p-4 md:p-6 lg:p-8 grid gap-8">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">
+                Anomalies Detected
+              </CardTitle>
+              <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">12</div>
+              <p className="text-xs text-muted-foreground">
+                in the last 24 hours
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Threats</CardTitle>
+              <Bot className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">3</div>
+              <p className="text-xs text-muted-foreground">
+                High-priority alerts
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bandwidth</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">1.2 Gbps</div>
+              <p className="text-xs text-muted-foreground">Current network usage</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Services Monitored</CardTitle>
+              <Signal className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">45</div>
+              <p className="text-xs text-muted-foreground">Across 12 hosts</p>
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Real-time Network Traffic</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LiveTrafficChart />
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}
