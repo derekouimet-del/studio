@@ -7,6 +7,7 @@ import {
   ScanLine,
   Bot,
   FileText,
+  Hammer,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/reports', icon: FileText, label: 'Reports' },
+  { href: '/wordforge', icon: Hammer, label: 'WordForge' },
 ];
 
 export function AppSidebar() {
@@ -42,7 +44,7 @@ export function AppSidebar() {
             <SidebarMenuItem key={item.href}>
               <Link href={item.href} legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname === item.href}
+                  isActive={pathname.startsWith(item.href)}
                   tooltip={{ children: item.label }}
                 >
                   <item.icon />
