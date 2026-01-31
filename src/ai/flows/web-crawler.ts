@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview A Genkit flow that simulates a web crawler and security scanner.
+ * @fileOverview A Genkit flow that functions as a web crawler and security scanner.
  *
- * - crawlWebsite - A function that takes a target URL and simulates crawling for pages and secrets.
+ * - crawlWebsite - A function that takes a target URL, fetches its content, and analyzes it for pages and secrets.
  * - CrawlWebsiteInput - The input type for the crawlWebsite function.
  * - CrawlWebsiteOutput - The return type for the crawlWebsite function.
  */
@@ -40,23 +40,20 @@ export async function crawlWebsite(input: CrawlWebsiteInput): Promise<CrawlWebsi
   return crawlWebsiteFlow(input);
 }
 
-const crawlWebsitePrompt = ai.definePrompt({
-  name: 'crawlWebsitePrompt',
-  input: {schema: CrawlWebsiteInputSchema},
-  output: {schema: CrawlWebsiteOutputSchema},
-  prompt: `You are a web crawler and security scanner. Your task is to simulate crawling a website and identifying interesting pages and potential credential leaks.
-
-Given the target URL: {{{targetUrl}}}
-
-Generate a realistic list of 5-10 discovered pages, including common paths like '/login', '/admin', '/robots.txt', and some plausible but not necessarily real sub-pages. Assign realistic HTTP status codes (200, 302, 403, 404).
-
-Also, generate a list of 1-3 plausible-looking but fake credentials or secrets that might be found in files like '.git/config', '.env', or in HTML comments. The credentials should look realistic but not be real, working credentials.
-
-For each page, provide a unique 'id' as a string. For each credential, also provide a unique 'id' string.
-
-Return the result as a JSON object with 'pages' and 'credentials' arrays.`,
+const analyzePageContentPrompt = ai.definePrompt({
+  name: 'analyzePageContentPrompt',
+  input: { schema: z.object({ targetUrl: z.string(), pageContent: z.string() }) },
+  output: { schema: CrawlWebsiteOutputSchema },
+  prompt: `You are a security scanner analyzing the content of {{{targetUrl}}}. The HTML content is below:
+---
+{{{pageContent}}}
+---
+From this HTML, do the following:
+1. Extract up to 10 interesting links (<a href...>) from the page. Convert relative URLs to absolute URLs using the targetUrl as the base. For each link, create a PageResult object. Assume a status code of 200. The page title should be extracted from the link's anchor text.
+2. Identify up to 3 potential credentials or secrets. Look for API keys, passwords in comments, or other sensitive data. For each, create a CredentialResult object.
+3. For all results, generate a unique 'id' string (e.g., using a random number).
+4. Return a JSON object with 'pages' and 'credentials' arrays, matching the output schema. If nothing is found, return empty arrays.`,
 });
-
 
 const crawlWebsiteFlow = ai.defineFlow(
   {
@@ -64,8 +61,34 @@ const crawlWebsiteFlow = ai.defineFlow(
     inputSchema: CrawlWebsiteInputSchema,
     outputSchema: CrawlWebsiteOutputSchema,
   },
-  async input => {
-    const {output} = await crawlWebsitePrompt(input);
-    return output!;
+  async ({ targetUrl }) => {
+    let pageContent: string;
+    try {
+        const response = await fetch(targetUrl, { headers: { 'User-Agent': 'ProSentry-Crawler/1.0' }});
+        if (!response.ok) {
+            console.error(`Failed to fetch ${targetUrl}: ${response.status} ${response.statusText}`);
+            // Return empty results if fetch fails, as the UI expects this schema.
+            return { pages: [], credentials: [] };
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('text/html')) {
+            console.error(`Skipping ${targetUrl} because content-type is not text/html.`);
+            return { pages: [], credentials: [] };
+        }
+
+        pageContent = await response.text();
+    } catch (e: any) {
+        console.error(`Exception while fetching ${targetUrl}:`, e.message);
+        return { pages: [], credentials: [] };
+    }
+    
+    const {output} = await analyzePageContentPrompt({ targetUrl, pageContent });
+    
+    if (!output) {
+      return { pages: [], credentials: [] };
+    }
+
+    return output;
   }
 );
