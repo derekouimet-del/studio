@@ -3,6 +3,7 @@ import './globals.css';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { Toaster } from '@/components/ui/toaster';
+import { ChatAgent } from '@/components/agent/chat-agent';
 
 export const metadata: Metadata = {
   title: 'ProSentry',
@@ -29,6 +30,7 @@ export default function RootLayout({
             {children}
           </SidebarInset>
         </SidebarProvider>
+        <ChatAgent />
         <Toaster />
       </body>
     </html>

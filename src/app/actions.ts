@@ -5,6 +5,7 @@ import { assessVulnerability, type VulnerabilityAssessmentInput } from '@/ai/flo
 import { suggestExploits, type ExploitSuggestionInput } from '@/ai/flows/exploit-suggestion';
 import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
 import { suggestWordlist, type WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
+import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -43,5 +44,15 @@ export async function suggestWordlistAction(input: WordlistSuggestionInput) {
   } catch (error) {
     console.error('Wordlist suggestion failed:', error);
     return { success: false, error: 'An error occurred while generating suggestions.' };
+  }
+}
+
+export async function agentChatAction(input: AgentChatInput) {
+  try {
+    const result = await agentChat(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Agent chat failed:', error);
+    return { success: false, error: 'An error occurred while talking to the agent.' };
   }
 }
