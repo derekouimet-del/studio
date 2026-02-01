@@ -7,6 +7,8 @@ import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
 import { suggestWordlist, type WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
 import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
 import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
+import { generateBreachedPasswords, type GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
+import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -66,4 +68,24 @@ export async function nmapSuggestionAction(input: NmapSuggestionInput) {
         console.error('Nmap suggestion failed:', error);
         return { success: false, error: 'An error occurred while generating the nmap command.' };
     }
+}
+
+export async function generateBreachedPasswordsAction(input: GenerateBreachedPasswordsInput) {
+  try {
+    const result = await generateBreachedPasswords(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Breached password generation failed:', error);
+    return { success: false, error: 'An error occurred while generating passwords.' };
+  }
+}
+
+export async function checkPasswordStrengthAction(input: CheckPasswordStrengthInput) {
+  try {
+    const result = await checkPasswordStrength(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Password strength check failed:', error);
+    return { success: false, error: 'An error occurred while checking password strength.' };
+  }
 }

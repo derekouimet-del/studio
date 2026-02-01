@@ -9,6 +9,7 @@ import {
   FileText,
   Hammer,
   TerminalSquare,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/reports', icon: FileText, label: 'Reports' },
+  { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
 ];
 
