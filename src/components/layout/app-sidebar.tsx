@@ -11,6 +11,7 @@ import {
   TerminalSquare,
   ShieldAlert,
   FileSearch,
+  Fingerprint,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/reports', icon: FileText, label: 'Reports' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
+  { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
 ];
 
 export function AppSidebar() {

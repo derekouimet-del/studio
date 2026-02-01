@@ -9,3 +9,4 @@ import '@/ai/flows/agent-chat.ts';
 import '@/ai/flows/nmap-suggestion.ts';
 import '@/ai/flows/generate-breached-passwords.ts';
 import '@/ai/flows/check-password-strength.ts';
+import '@/ai/flows/content-authenticity.ts';

@@ -9,6 +9,7 @@ import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
 import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
 import { generateBreachedPasswords, type GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
 import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
+import { analyzeContentAuthenticity, type ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -87,5 +88,15 @@ export async function checkPasswordStrengthAction(input: CheckPasswordStrengthIn
   } catch (error) {
     console.error('Password strength check failed:', error);
     return { success: false, error: 'An error occurred while checking password strength.' };
+  }
+}
+
+export async function analyzeContentAuthenticityAction(input: ContentAuthenticityInput) {
+  try {
+    const result = await analyzeContentAuthenticity(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Content authenticity analysis failed:', error);
+    return { success: false, error: 'An error occurred while analyzing the content.' };
   }
 }
