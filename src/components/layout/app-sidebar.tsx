@@ -10,6 +10,7 @@ import {
   Hammer,
   TerminalSquare,
   ShieldAlert,
+  FileSearch,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -26,6 +27,7 @@ const navItems = [
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
+  { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
   { href: '/reports', icon: FileText, label: 'Reports' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
