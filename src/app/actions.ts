@@ -10,6 +10,7 @@ import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-sugges
 import { generateBreachedPasswords, type GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
 import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
 import { analyzeContentAuthenticity, type ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
+import { runLlamaTool, type LlamaToolInput, type LlamaToolOutput } from '@/ai/flows/run-llama-tool';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -98,5 +99,18 @@ export async function analyzeContentAuthenticityAction(input: ContentAuthenticit
   } catch (error) {
     console.error('Content authenticity analysis failed:', error);
     return { success: false, error: 'An error occurred while analyzing the content.' };
+  }
+}
+
+export async function runLlamaToolAction(input: LlamaToolInput): Promise<{ success: boolean; data?: LlamaToolOutput; error?: string }> {
+  try {
+    const result = await runLlamaTool(input);
+    if (!result.ok) {
+      return { success: false, error: result.error || 'The Llama tool failed without a specific error message.' };
+    }
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Llama tool action failed:', error);
+    return { success: false, error: error.message || 'An unexpected error occurred while running the Llama tool.' };
   }
 }
