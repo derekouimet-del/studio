@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -21,7 +21,6 @@ import {
   Scissors,
   Download,
   FileText,
-  Plus,
   BrainCircuit,
   LoaderCircle,
   Copy,
@@ -51,6 +50,7 @@ export function WordForgeClient() {
   const [sourceLists, setSourceLists] = useState<SourceList[]>([]);
   const [fileName, setFileName] = useState('custom-wordlist.txt');
   const [isDragging, setIsDragging] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [lengthRange, setLengthRange] = useState([8, 16]);
   const [prefix, setPrefix] = useState('');
   const [suffix, setSuffix] = useState('');
@@ -62,6 +62,14 @@ export function WordForgeClient() {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
 
   const wordCount = useMemo(() => words.length, [words]);
+  
+  const processWords = (callback: () => void) => {
+    setIsProcessing(true);
+    setTimeout(() => {
+        callback();
+        setIsProcessing(false);
+    }, 50); // A small delay to allow UI to update with the loader
+  }
 
   const handleFileRead = (file: File, combine: boolean) => {
     const reader = new FileReader();
@@ -130,84 +138,94 @@ export function WordForgeClient() {
   };
 
   const removeDuplicates = () => {
-    const originalCount = words.length;
-    const uniqueWords = [...new Set(words)];
-    const newCount = uniqueWords.length;
-    setWords(uniqueWords);
-    toast({
-      title: 'Duplicates Removed',
-      description: `${originalCount - newCount} duplicate words were removed.`,
+    processWords(() => {
+        const originalCount = words.length;
+        const uniqueWords = [...new Set(words)];
+        const newCount = uniqueWords.length;
+        setWords(uniqueWords);
+        toast({
+        title: 'Duplicates Removed',
+        description: `${originalCount - newCount} duplicate words were removed.`,
+        });
     });
   };
 
   const trimByLength = () => {
-    const originalCount = words.length;
-    const [min, max] = lengthRange;
-    const trimmedWords = words.filter((w) => w.length >= min && w.length <= max);
-    setWords(trimmedWords);
-    toast({
-      title: 'Wordlist Trimmed by Length',
-      description: `${
-        originalCount - trimmedWords.length
-      } words outside the ${min}-${max} character range removed.`,
+    processWords(() => {
+        const originalCount = words.length;
+        const [min, max] = lengthRange;
+        const trimmedWords = words.filter((w) => w.length >= min && w.length <= max);
+        setWords(trimmedWords);
+        toast({
+        title: 'Wordlist Trimmed by Length',
+        description: `${
+            originalCount - trimmedWords.length
+        } words outside the ${min}-${max} character range removed.`,
+        });
     });
   };
 
   const applyCapitalization = (type: 'upper' | 'lower' | 'capitalize', append: boolean) => {
-    let transformedWords: string[] = [];
-    let title = '';
-    if (type === 'upper') {
-      transformedWords = words.map((w) => w.toUpperCase());
-      title = append ? 'Appended UPPERCASE variations' : 'Converted to UPPERCASE';
-    } else if (type === 'lower') {
-      transformedWords = words.map((w) => w.toLowerCase());
-      title = append ? 'Appended lowercase variations' : 'Converted to lowercase';
-    } else {
-      transformedWords = words.map(
-        (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-      );
-      title = append ? 'Appended Capitalized variations' : 'Capitalized Words';
-    }
-    
-    if (append) {
-        const combined = [...words, ...transformedWords];
-        const unique = [...new Set(combined)];
-        setWords(unique);
-        toast({ title, description: `Word count is now ${unique.length}` });
-    } else {
-        setWords(transformedWords);
-        toast({ title });
-    }
+    processWords(() => {
+        let transformedWords: string[] = [];
+        let title = '';
+        if (type === 'upper') {
+        transformedWords = words.map((w) => w.toUpperCase());
+        title = append ? 'Appended UPPERCASE variations' : 'Converted to UPPERCASE';
+        } else if (type === 'lower') {
+        transformedWords = words.map((w) => w.toLowerCase());
+        title = append ? 'Appended lowercase variations' : 'Converted to lowercase';
+        } else {
+        transformedWords = words.map(
+            (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        );
+        title = append ? 'Appended Capitalized variations' : 'Capitalized Words';
+        }
+        
+        if (append) {
+            const combined = [...words, ...transformedWords];
+            const unique = [...new Set(combined)];
+            setWords(unique);
+            toast({ title, description: `Word count is now ${unique.length}` });
+        } else {
+            setWords(transformedWords);
+            toast({ title });
+        }
+    });
   };
   
   const applyAffix = (type: 'prefix' | 'suffix', append: boolean) => {
-    const affix = type === 'prefix' ? prefix : suffix;
-    if (!affix) return;
-    const transformed = words.map(w => type === 'prefix' ? `${affix}${w}` : `${w}${affix}`);
-    
-    if (append) {
-        const combined = [...words, ...transformed];
-        const unique = [...new Set(combined)];
-        setWords(unique);
-        toast({ title: `Appended ${type} variations`, description: `Added "${affix}" to words. Total unique: ${unique.length}.`});
-    } else {
-        setWords(transformed);
-        toast({ title: `Applied ${type}`, description: `Added "${affix}" to ${words.length} words.`});
-    }
+    processWords(() => {
+        const affix = type === 'prefix' ? prefix : suffix;
+        if (!affix) return;
+        const transformed = words.map(w => type === 'prefix' ? `${affix}${w}` : `${w}${affix}`);
+        
+        if (append) {
+            const combined = [...words, ...transformed];
+            const unique = [...new Set(combined)];
+            setWords(unique);
+            toast({ title: `Appended ${type} variations`, description: `Added "${affix}" to words. Total unique: ${unique.length}.`});
+        } else {
+            setWords(transformed);
+            toast({ title: `Applied ${type}`, description: `Added "${affix}" to ${words.length} words.`});
+        }
+    });
   }
 
   const applyLeetSpeak = (append: boolean) => {
-    const leetWords = words.map(w => w.split('').map(char => leetMap[char] || char).join(''));
-    
-    if (append) {
-        const combined = [...words, ...leetWords];
-        const unique = [...new Set(combined)];
-        setWords(unique);
-        toast({ title: 'Appended Leet Speak Variations', description: `Word count is now ${unique.length}.` });
-    } else {
-        setWords(leetWords);
-        toast({ title: 'Applied Leet Speak (Replaced)', description: 'Converted applicable characters to 1337.'});
-    }
+    processWords(() => {
+        const leetWords = words.map(w => w.split('').map(char => leetMap[char] || char).join(''));
+        
+        if (append) {
+            const combined = [...words, ...leetWords];
+            const unique = [...new Set(combined)];
+            setWords(unique);
+            toast({ title: 'Appended Leet Speak Variations', description: `Word count is now ${unique.length}.` });
+        } else {
+            setWords(leetWords);
+            toast({ title: 'Applied Leet Speak (Replaced)', description: 'Converted applicable characters to 1337.'});
+        }
+    });
   }
   
   const handleGetSuggestions = async () => {
@@ -310,85 +328,95 @@ export function WordForgeClient() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader><CardTitle>Manipulation Tools</CardTitle></CardHeader>
-              <CardContent className="space-y-6">
-                
-                <div className="grid sm:grid-cols-2 gap-6">
-                    {/* Basic Tools */}
-                    <div className="space-y-4">
-                      <Label className="font-semibold">Basic Operations</Label>
-                      <Button variant="outline" onClick={removeDuplicates} className="w-full"><Sparkles /> Remove Duplicates</Button>
+              <CardContent className="relative">
+                 {isProcessing && (
+                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center rounded-lg z-10">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <LoaderCircle className="animate-spin"/>
+                            <span>Processing...</span>
+                        </div>
                     </div>
+                )}
+                <div className={cn("space-y-6", isProcessing && "opacity-50 pointer-events-none")}>
+                    
+                    <div className="grid sm:grid-cols-2 gap-6">
+                        {/* Basic Tools */}
+                        <div className="space-y-4">
+                        <Label className="font-semibold">Basic Operations</Label>
+                        <Button variant="outline" onClick={removeDuplicates} className="w-full"><Sparkles /> Remove Duplicates</Button>
+                        </div>
 
+                        <div className="space-y-4">
+                            <Label className="font-semibold">Trim by Length ({lengthRange[0]}-{lengthRange[1]})</Label>
+                            <div className="flex gap-4 items-center">
+                                <Slider
+                                    min={0}
+                                    max={40}
+                                    step={1}
+                                    value={lengthRange}
+                                    onValueChange={setLengthRange}
+                                    className="flex-1"
+                                />
+                                <Button variant="outline" onClick={trimByLength}><Scissors /></Button>
+                            </div>
+                        </div>
+                    </div>
+                    <Separator />
+                    {/* Capitalization */}
                     <div className="space-y-4">
-                        <Label className="font-semibold">Trim by Length ({lengthRange[0]}-{lengthRange[1]})</Label>
-                        <div className="flex gap-4 items-center">
-                            <Slider
-                                min={0}
-                                max={40}
-                                step={1}
-                                value={lengthRange}
-                                onValueChange={setLengthRange}
-                                className="flex-1"
-                            />
-                            <Button variant="outline" onClick={trimByLength}><Scissors /></Button>
-                        </div>
-                    </div>
-                </div>
-                 <Separator />
-                {/* Capitalization */}
-                <div className="space-y-4">
-                    <Label className="font-semibold">Capitalization & Case</Label>
-                    <div className="grid sm:grid-cols-3 gap-2">
-                        <div>
-                            <p className="text-xs text-center mb-1 text-muted-foreground">lowercase</p>
-                            <div className="flex">
-                                <Button variant="outline" onClick={() => applyCapitalization('lower', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
-                                <Button variant="outline" onClick={() => applyCapitalization('lower', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                        <Label className="font-semibold">Capitalization & Case</Label>
+                        <div className="grid sm:grid-cols-3 gap-2">
+                            <div>
+                                <p className="text-xs text-center mb-1 text-muted-foreground">lowercase</p>
+                                <div className="flex">
+                                    <Button variant="outline" onClick={() => applyCapitalization('lower', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
+                                    <Button variant="outline" onClick={() => applyCapitalization('lower', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                                </div>
                             </div>
-                        </div>
-                         <div>
-                            <p className="text-xs text-center mb-1 text-muted-foreground">UPPERCASE</p>
-                            <div className="flex">
-                                <Button variant="outline" onClick={() => applyCapitalization('upper', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
-                                <Button variant="outline" onClick={() => applyCapitalization('upper', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                            <div>
+                                <p className="text-xs text-center mb-1 text-muted-foreground">UPPERCASE</p>
+                                <div className="flex">
+                                    <Button variant="outline" onClick={() => applyCapitalization('upper', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
+                                    <Button variant="outline" onClick={() => applyCapitalization('upper', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                                </div>
                             </div>
-                        </div>
-                         <div>
-                            <p className="text-xs text-center mb-1 text-muted-foreground">Capitalize</p>
-                            <div className="flex">
-                                <Button variant="outline" onClick={() => applyCapitalization('capitalize', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
-                                <Button variant="outline" onClick={() => applyCapitalization('capitalize', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                            <div>
+                                <p className="text-xs text-center mb-1 text-muted-foreground">Capitalize</p>
+                                <div className="flex">
+                                    <Button variant="outline" onClick={() => applyCapitalization('capitalize', false)} className="flex-1 rounded-r-none"><Copy/> Replace</Button>
+                                    <Button variant="outline" onClick={() => applyCapitalization('capitalize', true)} className="flex-1 rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                 <Separator />
-                {/* Affixes */}
-                <div className="space-y-4">
-                    <Label className="font-semibold">Prefixes & Suffixes</Label>
-                    <div className="flex gap-2 items-center">
-                        <Input placeholder="Prefix..." value={prefix} onChange={e => setPrefix(e.target.value)} />
-                        <Button onClick={() => applyAffix('prefix', false)}><Copy/> Replace</Button>
-                        <Button onClick={() => applyAffix('prefix', true)}><PlusCircle/> Append</Button>
-                    </div>
-                     <div className="flex gap-2 items-center">
-                        <Input placeholder="Suffix..." value={suffix} onChange={e => setSuffix(e.target.value)} />
-                        <Button onClick={() => applyAffix('suffix', false)}><Copy/> Replace</Button>
-                        <Button onClick={() => applyAffix('suffix', true)}><PlusCircle/> Append</Button>
-                    </div>
-                </div>
-                 <Separator />
-                 {/* Mangling */}
-                 <div className="space-y-4">
-                    <Label className="font-semibold">Mangling Rules</Label>
-                     <div className="flex gap-2 items-center justify-between p-2 rounded-md border">
-                        <Label htmlFor="leet-speak">Apply Leet (1337) Speak</Label>
-                        <div className="flex">
-                            <Button variant="outline" onClick={() => applyLeetSpeak(false)} className="rounded-r-none"><Copy/> Replace</Button>
-                            <Button variant="outline" onClick={() => applyLeetSpeak(true)} className="rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                    <Separator />
+                    {/* Affixes */}
+                    <div className="space-y-4">
+                        <Label className="font-semibold">Prefixes & Suffixes</Label>
+                        <div className="flex gap-2 items-center">
+                            <Input placeholder="Prefix..." value={prefix} onChange={e => setPrefix(e.target.value)} />
+                            <Button onClick={() => applyAffix('prefix', false)}><Copy/> Replace</Button>
+                            <Button onClick={() => applyAffix('prefix', true)}><PlusCircle/> Append</Button>
+                        </div>
+                        <div className="flex gap-2 items-center">
+                            <Input placeholder="Suffix..." value={suffix} onChange={e => setSuffix(e.target.value)} />
+                            <Button onClick={() => applyAffix('suffix', false)}><Copy/> Replace</Button>
+                            <Button onClick={() => applyAffix('suffix', true)}><PlusCircle/> Append</Button>
                         </div>
                     </div>
-                 </div>
+                    <Separator />
+                    {/* Mangling */}
+                    <div className="space-y-4">
+                        <Label className="font-semibold">Mangling Rules</Label>
+                        <div className="flex gap-2 items-center justify-between p-2 rounded-md border">
+                            <Label htmlFor="leet-speak">Apply Leet (1337) Speak</Label>
+                            <div className="flex">
+                                <Button variant="outline" onClick={() => applyLeetSpeak(false)} className="rounded-r-none"><Copy/> Replace</Button>
+                                <Button variant="outline" onClick={() => applyLeetSpeak(true)} className="rounded-l-none border-l-0"><PlusCircle/> Append</Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -457,7 +485,7 @@ export function WordForgeClient() {
                             <div className="font-code text-sm space-y-1 p-2 rounded-md bg-muted/50 max-h-32 overflow-y-auto border">
                                 {aiSuggestions.map((w,i) => <p key={i}>{w}</p>)}
                             </div>
-                            <Button onClick={addSuggestionsToList} className="w-full"><Plus/> Add Suggestions to List</Button>
+                            <Button onClick={addSuggestionsToList} className="w-full"><PlusCircle/> Add Suggestions to List</Button>
                         </div>
                     )}
                 </CardContent>
