@@ -13,6 +13,7 @@ import {
   FileSearch,
   Fingerprint,
   Tag,
+  Globe,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,6 +28,7 @@ import { PenQuestLogo } from '@/components/icons';
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
+  { href: '/attack-surface', icon: Globe, label: 'Attack Surface' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },

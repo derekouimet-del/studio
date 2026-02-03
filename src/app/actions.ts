@@ -11,6 +11,7 @@ import { generateBreachedPasswords, type GenerateBreachedPasswordsInput } from '
 import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
 import { analyzeContentAuthenticity, type ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
 import { runLlamaTool, type LlamaToolInput, type LlamaToolOutput } from '@/ai/flows/run-llama-tool';
+import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -112,5 +113,15 @@ export async function runLlamaToolAction(input: LlamaToolInput): Promise<{ succe
   } catch (error: any) {
     console.error('Llama tool action failed:', error);
     return { success: false, error: error.message || 'An unexpected error occurred while running the Llama tool.' };
+  }
+}
+
+export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput) {
+  try {
+    const result = await mapAttackSurface(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Attack surface mapping failed:', error);
+    return { success: false, error: 'An error occurred while mapping the attack surface.' };
   }
 }
