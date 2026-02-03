@@ -12,6 +12,8 @@ import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flo
 import { analyzeContentAuthenticity, type ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
 import { runLlamaTool, type LlamaToolInput, type LlamaToolOutput } from '@/ai/flows/run-llama-tool';
 import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
+import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
+import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -123,5 +125,25 @@ export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput)
   } catch (error) {
     console.error('Attack surface mapping failed:', error);
     return { success: false, error: 'An error occurred while mapping the attack surface.' };
+  }
+}
+
+export async function vulndbExplorerAction(input: VulnDBExplorerInput) {
+  try {
+    const result = await vulndbExplorer(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('VulnDB Explorer failed:', error);
+    return { success: false, error: 'An error occurred while searching for vulnerabilities.' };
+  }
+}
+
+export async function defaultPassAction(input: DefaultPassInput) {
+  try {
+    const result = await defaultPass(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Default Pass lookup failed:', error);
+    return { success: false, error: 'An error occurred while searching for default credentials.' };
   }
 }

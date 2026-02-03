@@ -14,6 +14,8 @@ import {
   Fingerprint,
   Tag,
   Globe,
+  DatabaseZap,
+  Users,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,16 +29,18 @@ import { PenQuestLogo } from '@/components/icons';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/attack-surface', icon: Globe, label: 'Attack Surface' },
-  { href: '/crawl', icon: Bot, label: 'Web Crawler' },
+  { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
+  { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
-  { href: '/reports', icon: FileText, label: 'Reports' },
+  { href: '/vulndb-explorer', icon: DatabaseZap, label: 'VulnDB Explorer' },
+  { href: '/default-pass', icon: Users, label: 'Default Pass' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
+  { href: '/reports', icon: FileText, label: 'Reports' },
 ];
 
 export function AppSidebar() {

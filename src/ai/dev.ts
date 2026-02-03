@@ -12,3 +12,5 @@ import '@/ai/flows/check-password-strength.ts';
 import '@/ai/flows/content-authenticity.ts';
 import '@/ai/flows/run-llama-tool.ts';
 import '@/ai/flows/attack-surface-mapper.ts';
+import '@/ai/flows/vulndb-explorer.ts';
+import '@/ai/flows/default-pass.ts';
