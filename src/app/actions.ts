@@ -15,6 +15,7 @@ import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/atta
 import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
 import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
 import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
+import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -156,5 +157,15 @@ export async function textToSpeechAction(input: TextToSpeechInput) {
   } catch (error: any) {
     console.error('Text-to-speech failed:', error);
     return { success: false, error: error.message || 'An error occurred during audio generation.' };
+  }
+}
+
+export async function threatViewAction(input: ThreatViewInput) {
+  try {
+    const result = await threatView(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('ThreatView search failed:', error);
+    return { success: false, error: 'An error occurred while searching for threats.' };
   }
 }

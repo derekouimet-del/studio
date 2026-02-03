@@ -17,6 +17,7 @@ import {
   DatabaseZap,
   Users,
   AudioLines,
+  Radar,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
+  { href: '/threat-view', icon: Radar, label: 'ThreatView' },
   { href: '/vulndb-explorer', icon: DatabaseZap, label: 'VulnDB Explorer' },
   { href: '/default-pass', icon: Users, label: 'Default Pass' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
