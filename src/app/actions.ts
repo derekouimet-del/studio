@@ -14,6 +14,7 @@ import { runLlamaTool, type LlamaToolInput, type LlamaToolOutput } from '@/ai/fl
 import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
 import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
 import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
+import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -145,5 +146,15 @@ export async function defaultPassAction(input: DefaultPassInput) {
   } catch (error) {
     console.error('Default Pass lookup failed:', error);
     return { success: false, error: 'An error occurred while searching for default credentials.' };
+  }
+}
+
+export async function textToSpeechAction(input: TextToSpeechInput) {
+  try {
+    const result = await textToSpeech(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Text-to-speech failed:', error);
+    return { success: false, error: error.message || 'An error occurred during audio generation.' };
   }
 }

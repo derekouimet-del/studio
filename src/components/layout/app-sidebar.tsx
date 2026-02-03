@@ -16,6 +16,7 @@ import {
   Globe,
   DatabaseZap,
   Users,
+  AudioLines,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
+  { href: '/voiceweaver', icon: AudioLines, label: 'Voice Weaver' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
   { href: '/reports', icon: FileText, label: 'Reports' },
 ];

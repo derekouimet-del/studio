@@ -14,3 +14,4 @@ import '@/ai/flows/run-llama-tool.ts';
 import '@/ai/flows/attack-surface-mapper.ts';
 import '@/ai/flows/vulndb-explorer.ts';
 import '@/ai/flows/default-pass.ts';
+import '@/ai/flows/text-to-speech.ts';
