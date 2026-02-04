@@ -16,6 +16,7 @@ import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-expl
 import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
 import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
 import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
+import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -167,5 +168,15 @@ export async function threatViewAction(input: ThreatViewInput) {
   } catch (error) {
     console.error('ThreatView search failed:', error);
     return { success: false, error: 'An error occurred while searching for threats.' };
+  }
+}
+
+export async function dataSieveAction(input: DataSieveInput) {
+  try {
+    const result = await dataSieve(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('DataSieve analysis failed:', error);
+    return { success: false, error: error.message || 'An error occurred while analyzing the file.' };
   }
 }

@@ -16,3 +16,4 @@ import '@/ai/flows/vulndb-explorer.ts';
 import '@/ai/flows/default-pass.ts';
 import '@/ai/flows/text-to-speech.ts';
 import '@/ai/flows/threat-view.ts';
+import '@/ai/flows/data-sieve.ts';

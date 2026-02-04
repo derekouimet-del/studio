@@ -18,6 +18,7 @@ import {
   Users,
   AudioLines,
   Radar,
+  Filter,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/threat-view', icon: Radar, label: 'ThreatView' },
   { href: '/vulndb-explorer', icon: DatabaseZap, label: 'VulnDB Explorer' },
   { href: '/default-pass', icon: Users, label: 'Default Pass' },
+  { href: '/datasieve', icon: Filter, label: 'DataSieve' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
