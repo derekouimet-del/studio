@@ -17,6 +17,7 @@ import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
 import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
 import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
+import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -178,5 +179,15 @@ export async function dataSieveAction(input: DataSieveInput) {
   } catch (error: any) {
     console.error('DataSieve analysis failed:', error);
     return { success: false, error: error.message || 'An error occurred while analyzing the file.' };
+  }
+}
+
+export async function networkScanAction(input: NetworkScanInput) {
+  try {
+    const result = await networkScan(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Network scan failed:', error);
+    return { success: false, error: error.message || 'An error occurred during the network scan.' };
   }
 }
