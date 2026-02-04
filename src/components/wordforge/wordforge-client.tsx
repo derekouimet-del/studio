@@ -244,6 +244,46 @@ export function WordForgeClient() {
     setIsSuggesting(false);
   };
   
+  const autoEnhance = () => {
+    if (words.length === 0) {
+        toast({
+            variant: 'destructive',
+            title: 'Wordlist is empty',
+            description: 'Upload a wordlist before enhancing it.',
+        });
+        return;
+    }
+    processWords(() => {
+        let tempWords = [...new Set(words)]; // initial dedupe
+        
+        let enhancedWords = [...tempWords];
+
+        // Append common variations: lowercase and capitalize
+        enhancedWords.push(...tempWords.map(w => w.toLowerCase()));
+        enhancedWords.push(...tempWords.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+
+        // Append common suffixes
+        const commonSuffixes = ['1', '123', '!', '2023', '2024'];
+        commonSuffixes.forEach(suffix => {
+            enhancedWords.push(...tempWords.map(w => `${w}${suffix}`));
+        });
+        
+        // Append leet speak variations
+        const leetWords = tempWords.map(w => w.split('').map(char => leetMap[char] || char).join(''));
+        enhancedWords.push(...leetWords);
+
+        // Final cleanup
+        const uniqueWords = [...new Set(enhancedWords)];
+
+        const originalCount = tempWords.length;
+        setWords(uniqueWords);
+        toast({
+            title: 'Wordlist Auto-Enhanced!',
+            description: `Applied common mutations. Word count increased from ${originalCount.toLocaleString()} to ${uniqueWords.length.toLocaleString()}.`
+        });
+    });
+  };
+
   const addSuggestionsToList = () => {
     const newWords = [...words, ...aiSuggestions];
     const uniqueWords = [...new Set(newWords)];
@@ -339,6 +379,21 @@ export function WordForgeClient() {
                 )}
                 <div className={cn("space-y-6", isProcessing && "opacity-50 pointer-events-none")}>
                     
+                    <div className="space-y-3 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                        <div className="flex items-center gap-3">
+                            <BrainCircuit className="size-6 text-primary flex-shrink-0" />
+                            <div>
+                                <h4 className="font-semibold">Auto-Enhance</h4>
+                                <p className="text-xs text-muted-foreground">Automatically apply a combination of common mutations (case changes, number suffixes, leet speak) to expand your list.</p>
+                            </div>
+                        </div>
+                        <Button onClick={autoEnhance} className="w-full mt-2" disabled={wordCount === 0}>
+                            <Sparkles /> Auto-Enhance Wordlist
+                        </Button>
+                    </div>
+
+                    <Separator />
+
                     <div className="grid sm:grid-cols-2 gap-6">
                         {/* Basic Tools */}
                         <div className="space-y-4">
