@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { LoaderCircle, DatabaseZap, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
+import { LoaderCircle, DatabaseZap, AlertTriangle, Shield, CheckCircle, Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { vulndbExplorerAction } from '@/app/actions';
 import { type VulnDBExplorerOutput } from '@/ai/flows/vulndb-explorer';
@@ -142,6 +142,21 @@ export function VulnDBExplorerClient() {
                          <Badge variant={getSeverityBadgeVariant(vuln.severity)}>{vuln.severity}</Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">{vuln.description}</p>
+                    {vuln.metasploitModules && vuln.metasploitModules.length > 0 && (
+                        <div className="mt-3">
+                            <h5 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                                <Terminal className="size-3"/>
+                                Metasploit Modules
+                            </h5>
+                            <div className="flex flex-wrap gap-2">
+                                {vuln.metasploitModules.map((module) => (
+                                    <Badge key={module} variant="outline" className="font-code text-xs">
+                                        {module}
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
               </div>
             ))}

@@ -21,6 +21,7 @@ const VulnerabilitySchema = z.object({
     cveId: z.string().describe('The CVE identifier (e.g., CVE-2021-44228).'),
     description: z.string().describe('A brief description of the vulnerability.'),
     severity: z.enum(['Critical', 'High', 'Medium', 'Low', 'Unknown']).describe('The severity level of the vulnerability.'),
+    metasploitModules: z.array(z.string()).optional().describe('A list of relevant Metasploit module paths, if any (e.g., "exploit/windows/smb/ms17_010_eternalblue").'),
 });
 
 const VulnDBExplorerOutputSchema = z.object({
@@ -43,7 +44,7 @@ Product: {{{product}}}
 Version: {{{version}}}
 {{/if}}
 
-For each vulnerability found, provide its CVE ID, a concise description, and its severity (Critical, High, Medium, Low, or Unknown). If no specific version is provided, list major vulnerabilities for the product line. Prioritize more recent and critical vulnerabilities if there are many.
+For each vulnerability found, provide its CVE ID, a concise description, its severity (Critical, High, Medium, Low, or Unknown), and a list of any relevant Metasploit modules that can be used to exploit it. If no modules exist for a CVE, you can omit the field. Prioritize more recent and critical vulnerabilities if there are many.
 
 Return a JSON object with a 'vulnerabilities' array. If no vulnerabilities are found, return an empty array.`,
 });
