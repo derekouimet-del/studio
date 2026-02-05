@@ -264,5 +264,84 @@ To interact with your new session, type:
 
 This tutorial is for educational purposes and should ONLY be performed on systems you own or have explicit permission to test, such as sandboxed environments like Metasploitable 2. Unauthorized access to computer systems is illegal.
 `
+  },
+  {
+    id: 'sqlmap-tutorial',
+    title: 'Automating SQL Injection with SQLMap',
+    category: 'Exploitation',
+    description: 'A comprehensive guide to using sqlmap, the premier open-source tool for detecting and exploiting SQL injection vulnerabilities.',
+    content: `
+## What is SQLMap?
+
+SQLMap is an open-source penetration testing tool that automates the process of detecting and exploiting SQL injection flaws and taking over of database servers. It comes with a powerful detection engine, numerous niche features for the ultimate penetration tester, and a broad range of switches lasting from database fingerprinting, over data fetching from the database, to accessing the underlying file system and executing commands on the operating system via out-of-band connections.
+
+---
+
+## Phase 1: Finding an Injection Point
+
+The first step is to find a URL parameter that might be vulnerable. Look for URLs like \`index.php?id=1\`, \`products.php?category=2\`, etc. For this tutorial, we'll use a publicly available test site.
+
+**The Target URL:** \`http://testphp.vulnweb.com/listproducts.php?cat=1\`
+
+**1. Basic Test**
+SQLMap can start by simply testing this URL. The \`-u\` flag is used to specify the URL.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1"\`
+
+SQLMap will ask you a few questions. It might ask if you want to follow redirects or test other parameters. You can often accept the default answers (by pressing Enter). It will then perform a series of tests to confirm the injection.
+
+---
+
+## Phase 2: Enumeration (Information Gathering)
+
+Once SQLMap confirms a vulnerability, it's time to find out what's inside the database.
+
+**1. List Databases**
+The \`--dbs\` switch will enumerate all the databases the current user has access to.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --dbs\`
+
+You might see databases like \`information_schema\` and \`acuart\`. The latter looks interesting.
+
+**2. List Tables**
+Now, let's see what tables are inside the \`acuart\` database. Use the \`-D\` flag to specify the database and \`--tables\` to list its tables.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" -D acuart --tables\`
+
+This might reveal tables like \`users\`, \`products\`, \`artists\`, etc. The \`users\` table is a high-value target.
+
+**3. List Columns**
+Let's inspect the columns of the \`users\` table. Use the \`-T\` flag for the table and \`--columns\`.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" -D acuart -T users --columns\`
+
+This could show columns like \`uname\`, \`pass\`, \`email\`, \`cc\`.
+
+---
+
+## Phase 3: Exploitation (Dumping Data)
+
+Now that you know the structure, you can extract the data.
+
+**1. Dump Table Contents**
+The \`--dump\` flag is used to get all the data from a table. SQLMap will also ask if you want to crack any password hashes it finds.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" -D acuart -T users --dump\`
+
+This command will dump the contents of the \`users\` table, giving you usernames, password hashes, and other sensitive information.
+
+---
+
+## Advanced Exploitation: Getting a Shell
+
+If the database user has sufficient privileges and the conditions are right, SQLMap can even give you an interactive shell on the operating system.
+
+**1. Get an OS Shell**
+The \`--os-shell\` command attempts to upload a small web shell to the server and use it to execute commands. This is one of the most powerful features of SQLMap.
+\`sqlmap -u "http://testphp.vulnweb.com/listproducts.php?cat=1" --os-shell\`
+
+SQLMap will ask for the language of the web application and the writable directory on the server. You may need to guess or find this information through other means. If successful, you will get a prompt where you can execute system commands.
+
+---
+
+## Ethical Considerations
+
+SQLMap is an incredibly powerful and aggressive tool. It should **NEVER** be used on systems you do not have explicit, written permission to test. Unauthorized use of SQLMap is illegal and will be detected by most modern security systems. Always practice in safe, sandboxed environments like the one used in this tutorial or DVWA (Damn Vulnerable Web Application).
+`
   }
 ];
