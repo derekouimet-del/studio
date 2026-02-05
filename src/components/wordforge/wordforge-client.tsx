@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
@@ -63,14 +64,6 @@ export function WordForgeClient() {
 
   const wordCount = useMemo(() => words.length, [words]);
   
-  const processWords = (callback: () => void) => {
-    setIsProcessing(true);
-    setTimeout(() => {
-        callback();
-        setIsProcessing(false);
-    }, 50); // A small delay to allow UI to update with the loader
-  }
-
   const handleFileRead = (file: File, combine: boolean) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -137,96 +130,172 @@ export function WordForgeClient() {
     }
   };
 
-  const removeDuplicates = () => {
-    processWords(() => {
-        const originalCount = words.length;
-        const uniqueWords = [...new Set(words)];
-        const newCount = uniqueWords.length;
-        setWords(uniqueWords);
-        toast({
-        title: 'Duplicates Removed',
-        description: `${originalCount - newCount} duplicate words were removed.`,
-        });
+  const removeDuplicates = async () => {
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0)); // Yield for UI update
+    
+    const originalCount = words.length;
+    
+    const uniqueSet = new Set<string>();
+    const chunkSize = 100000;
+    for (let i = 0; i < words.length; i += chunkSize) {
+        const chunk = words.slice(i, i + chunkSize);
+        for (const item of chunk) {
+            uniqueSet.add(item);
+        }
+        await new Promise(resolve => setTimeout(resolve, 0)); // Yield to main thread
+    }
+    const uniqueWords = Array.from(uniqueSet);
+
+    const newCount = uniqueWords.length;
+    setWords(uniqueWords);
+    toast({
+      title: 'Duplicates Removed',
+      description: `${originalCount - newCount} duplicate words were removed.`,
     });
+    setIsProcessing(false);
   };
 
-  const trimByLength = () => {
-    processWords(() => {
-        const originalCount = words.length;
-        const [min, max] = lengthRange;
-        const trimmedWords = words.filter((w) => w.length >= min && w.length <= max);
-        setWords(trimmedWords);
-        toast({
-        title: 'Wordlist Trimmed by Length',
-        description: `${
-            originalCount - trimmedWords.length
-        } words outside the ${min}-${max} character range removed.`,
-        });
+  const trimByLength = async () => {
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const originalCount = words.length;
+    const [min, max] = lengthRange;
+    
+    const result: string[] = [];
+    const chunkSize = 100000;
+    for (let i = 0; i < words.length; i += chunkSize) {
+        const chunk = words.slice(i, i + chunkSize);
+        result.push(...chunk.filter((w) => w.length >= min && w.length <= max));
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    
+    setWords(result);
+    toast({
+      title: 'Wordlist Trimmed by Length',
+      description: `${originalCount - result.length} words outside the ${min}-${max} character range removed.`,
     });
+    setIsProcessing(false);
   };
 
-  const applyCapitalization = (type: 'upper' | 'lower' | 'capitalize', append: boolean) => {
-    processWords(() => {
-        let transformedWords: string[] = [];
-        let title = '';
-        if (type === 'upper') {
-        transformedWords = words.map((w) => w.toUpperCase());
-        title = append ? 'Appended UPPERCASE variations' : 'Converted to UPPERCASE';
-        } else if (type === 'lower') {
-        transformedWords = words.map((w) => w.toLowerCase());
-        title = append ? 'Appended lowercase variations' : 'Converted to lowercase';
-        } else {
-        transformedWords = words.map(
-            (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
-        );
-        title = append ? 'Appended Capitalized variations' : 'Capitalized Words';
+  const applyCapitalization = async (type: 'upper' | 'lower' | 'capitalize', append: boolean) => {
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    let title = '';
+    const chunkSize = 100000;
+    
+    const getTransformedChunk = (chunk: string[]) => {
+        if (type === 'upper') return chunk.map((w) => w.toUpperCase());
+        if (type === 'lower') return chunk.map((w) => w.toLowerCase());
+        return chunk.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    };
+
+    if (append) {
+        if (type === 'upper') title = 'Appended UPPERCASE variations';
+        else if (type === 'lower') title = 'Appended lowercase variations';
+        else title = 'Appended Capitalized variations';
+
+        const uniqueSet = new Set<string>(words);
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            const transformedChunk = getTransformedChunk(chunk);
+            for (const item of transformedChunk) {
+                uniqueSet.add(item);
+            }
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-        
-        if (append) {
-            const combined = [...words, ...transformedWords];
-            const unique = [...new Set(combined)];
-            setWords(unique);
-            toast({ title, description: `Word count is now ${unique.length}` });
-        } else {
-            setWords(transformedWords);
-            toast({ title });
+        const newWords = Array.from(uniqueSet);
+        setWords(newWords);
+        toast({ title, description: `Word count is now ${newWords.length}` });
+    } else {
+        if (type === 'upper') title = 'Converted to UPPERCASE';
+        else if (type === 'lower') title = 'Converted to lowercase';
+        else title = 'Capitalized Words';
+
+        const newWords: string[] = [];
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            newWords.push(...getTransformedChunk(chunk));
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-    });
+        setWords(newWords);
+        toast({ title });
+    }
+    setIsProcessing(false);
   };
   
-  const applyAffix = (type: 'prefix' | 'suffix', append: boolean) => {
-    processWords(() => {
-        const affix = type === 'prefix' ? prefix : suffix;
-        if (!affix) return;
-        const transformed = words.map(w => type === 'prefix' ? `${affix}${w}` : `${w}${affix}`);
-        
-        if (append) {
-            const combined = [...words, ...transformed];
-            const unique = [...new Set(combined)];
-            setWords(unique);
-            toast({ title: `Appended ${type} variations`, description: `Added "${affix}" to words. Total unique: ${unique.length}.`});
-        } else {
-            setWords(transformed);
-            toast({ title: `Applied ${type}`, description: `Added "${affix}" to ${words.length} words.`});
-        }
-    });
-  }
+  const applyAffix = async (type: 'prefix' | 'suffix', append: boolean) => {
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const affix = type === 'prefix' ? prefix : suffix;
+    if (!affix) {
+        setIsProcessing(false);
+        return;
+    }
 
-  const applyLeetSpeak = (append: boolean) => {
-    processWords(() => {
-        const leetWords = words.map(w => w.split('').map(char => leetMap[char] || char).join(''));
-        
-        if (append) {
-            const combined = [...words, ...leetWords];
-            const unique = [...new Set(combined)];
-            setWords(unique);
-            toast({ title: 'Appended Leet Speak Variations', description: `Word count is now ${unique.length}.` });
-        } else {
-            setWords(leetWords);
-            toast({ title: 'Applied Leet Speak (Replaced)', description: 'Converted applicable characters to 1337.'});
+    const chunkSize = 100000;
+    const getTransformedChunk = (chunk: string[]) => chunk.map(w => type === 'prefix' ? `${affix}${w}` : `${w}${affix}`);
+
+    if (append) {
+        const uniqueSet = new Set<string>(words);
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            const transformedChunk = getTransformedChunk(chunk);
+            for (const item of transformedChunk) {
+                uniqueSet.add(item);
+            }
+            await new Promise(resolve => setTimeout(resolve, 0));
         }
-    });
-  }
+        const newWords = Array.from(uniqueSet);
+        setWords(newWords);
+        toast({ title: `Appended ${type} variations`, description: `Added "${affix}" to words. Total unique: ${newWords.length}.`});
+    } else {
+        const newWords: string[] = [];
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            newWords.push(...getTransformedChunk(chunk));
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        setWords(newWords);
+        toast({ title: `Applied ${type}`, description: `Added "${affix}" to ${words.length} words.`});
+    }
+    setIsProcessing(false);
+  };
+
+  const applyLeetSpeak = async (append: boolean) => {
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    const chunkSize = 100000;
+    const getTransformedChunk = (chunk: string[]) => chunk.map(w => w.split('').map(char => leetMap[char] || char).join(''));
+    
+    if (append) {
+        const uniqueSet = new Set<string>(words);
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            const transformedChunk = getTransformedChunk(chunk);
+            for (const item of transformedChunk) {
+                uniqueSet.add(item);
+            }
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const newWords = Array.from(uniqueSet);
+        setWords(newWords);
+        toast({ title: 'Appended Leet Speak Variations', description: `Word count is now ${newWords.length}.` });
+    } else {
+        const newWords: string[] = [];
+        for (let i = 0; i < words.length; i += chunkSize) {
+            const chunk = words.slice(i, i + chunkSize);
+            newWords.push(...getTransformedChunk(chunk));
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        setWords(newWords);
+        toast({ title: 'Applied Leet Speak (Replaced)', description: 'Converted applicable characters to 1337.'});
+    }
+    setIsProcessing(false);
+  };
   
   const handleGetSuggestions = async () => {
     if (!aiTopic) {
@@ -244,7 +313,7 @@ export function WordForgeClient() {
     setIsSuggesting(false);
   };
   
-  const autoEnhance = () => {
+  const autoEnhance = async () => {
     if (words.length === 0) {
         toast({
             variant: 'destructive',
@@ -253,35 +322,40 @@ export function WordForgeClient() {
         });
         return;
     }
-    processWords(() => {
-        let tempWords = [...new Set(words)]; // initial dedupe
-        
-        let enhancedWords = [...tempWords];
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // Start with a deduplicated list
+    const initialUniqueWords = [...new Set(words)];
+    const originalCount = initialUniqueWords.length;
+    const finalSet = new Set(initialUniqueWords);
 
-        // Append common variations: lowercase and capitalize
-        enhancedWords.push(...tempWords.map(w => w.toLowerCase()));
-        enhancedWords.push(...tempWords.map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()));
+    const commonSuffixes = ['1', '123', '!', '2023', '2024'];
+    const chunkSize = 50000;
 
-        // Append common suffixes
-        const commonSuffixes = ['1', '123', '!', '2023', '2024'];
-        commonSuffixes.forEach(suffix => {
-            enhancedWords.push(...tempWords.map(w => `${w}${suffix}`));
-        });
-        
-        // Append leet speak variations
-        const leetWords = tempWords.map(w => w.split('').map(char => leetMap[char] || char).join(''));
-        enhancedWords.push(...leetWords);
+    for (let i = 0; i < initialUniqueWords.length; i += chunkSize) {
+        const chunk = initialUniqueWords.slice(i, i + chunkSize);
+        for (const word of chunk) {
+            finalSet.add(word.toLowerCase());
+            finalSet.add(word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
 
-        // Final cleanup
-        const uniqueWords = [...new Set(enhancedWords)];
+            commonSuffixes.forEach(suffix => {
+                finalSet.add(`${word}${suffix}`);
+            });
+            
+            finalSet.add(word.split('').map(char => leetMap[char] || char).join(''));
+        }
+        // Yield to allow UI to remain responsive
+        await new Promise(resolve => setTimeout(resolve, 0));
+    }
 
-        const originalCount = tempWords.length;
-        setWords(uniqueWords);
-        toast({
-            title: 'Wordlist Auto-Enhanced!',
-            description: `Applied common mutations. Word count increased from ${originalCount.toLocaleString()} to ${uniqueWords.length.toLocaleString()}.`
-        });
+    const finalWords = Array.from(finalSet);
+    setWords(finalWords);
+    toast({
+        title: 'Wordlist Auto-Enhanced!',
+        description: `Applied common mutations. Word count increased from ${originalCount.toLocaleString()} to ${finalWords.length.toLocaleString()}.`
     });
+    setIsProcessing(false);
   };
 
   const addSuggestionsToList = () => {
@@ -560,3 +634,5 @@ export function WordForgeClient() {
     </div>
   );
 }
+
+    
