@@ -19,6 +19,7 @@ import {
   AudioLines,
   Radar,
   Filter,
+  Library,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -46,6 +47,7 @@ const navItems = [
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
   { href: '/voiceweaver', icon: AudioLines, label: 'Voice Weaver' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
+  { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
 ];
 
