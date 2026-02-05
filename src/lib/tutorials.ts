@@ -1,3 +1,4 @@
+
 export type Tutorial = {
   id: string;
   title: string;
@@ -127,7 +128,7 @@ Example: \`site:example.com intext:"DB_PASSWORD"\`
 Manually crafting these queries can be tedious. The Google Recon tool in Pen-Quest generates a comprehensive list of dorks tailored to your target domain, covering categories like login portals, exposed documents, config files, and potential vulnerabilities. This allows you to quickly launch these targeted searches and accelerate your open-source intelligence (OSINT) gathering phase.
 `
   },
-    {
+  {
     id: 'wordlists',
     title: 'Building Effective Wordlists',
     category: 'Cracking',
@@ -183,4 +184,85 @@ For maximum efficiency, use the "Auto-Enhance" feature. With one click, it appli
 4.  Download your new, powerful custom wordlist and use it in your password cracking tools.
 `
   },
+  {
+    id: 'metasploit-primer',
+    title: 'A Practical Guide to Metasploit',
+    category: 'Exploitation',
+    description: 'A step-by-step guide to using the Metasploit Framework for vulnerability scanning and exploitation in a lab environment.',
+    content: `
+## What is Metasploit?
+
+The Metasploit Framework is the world's most used penetration testing framework. It's a powerful tool that provides information about security vulnerabilities and aids in developing and executing exploit code against a target machine.
+
+You'll typically interact with Metasploit through its command-line interface, \`msfconsole\`.
+
+---
+
+## Phase 1: Information Gathering
+
+Before you can attack, you must gather intelligence. Metasploit can integrate directly with Nmap to scan targets and store the results in its database. This is the first and most crucial step.
+
+**1. Launch Metasploit**
+Open your terminal and start the Metasploit console:
+\`msfconsole\`
+
+**2. Scan Your Target**
+Once inside msfconsole, you can run Nmap directly. The \`db_nmap\` command runs an Nmap scan and saves the output to Metasploit's database. For this tutorial, we'll assume our target is a virtual machine with the IP \`10.0.2.15\`.
+
+\`db_nmap -A -v 10.0.2.15\`
+
+The \`-A\` flag enables OS detection, version detection, script scanning, and traceroute. After the scan, you can view the discovered hosts and services.
+
+\`hosts\`
+\`services\`
+
+---
+
+## Phase 2: Finding an Exploit
+
+Let's say your Nmap scan found an FTP server running "vsftpd 2.3.4" on port 21. This specific version is famously vulnerable.
+
+Our "VulnDB Explorer" can help identify CVEs, and Metasploit has a built-in search function to find a matching exploit module.
+
+**1. Search for a relevant exploit:**
+\`search vsftpd\`
+
+Metasploit will show you a list of matching modules. You'll see one named \`exploit/unix/ftp/vsftpd_234_backdoor\`. This is what we're looking for.
+
+---
+
+## Phase 3: Exploitation
+
+Now that you have a target and an exploit module, it's time to configure and launch the attack.
+
+**1. Select the Exploit**
+Use the \`use\` command followed by the name of the exploit module.
+\`use exploit/unix/ftp/vsftpd_234_backdoor\`
+
+Your command prompt will change to show you're now in the context of this exploit.
+
+**2. View Options**
+Every exploit has options you need to configure. The most important one is \`RHOSTS\`, which stands for "Remote Hosts" (your target's IP).
+\`show options\`
+
+**3. Set the Target**
+Set the RHOSTS option to your target's IP address.
+\`set RHOSTS 10.0.2.15\`
+
+**4. Run the Exploit**
+With the options set, all that's left is to run the exploit.
+\`exploit\`
+
+If successful, Metasploit will tell you "Command shell session 1 opened". This means you have successfully compromised the target machine and have a remote shell! You can now run commands on the target machine as if you were sitting in front of it.
+
+To interact with your new session, type:
+\`sessions -i 1\`
+
+---
+
+## Ethical Considerations
+
+This tutorial is for educational purposes and should ONLY be performed on systems you own or have explicit permission to test, such as sandboxed environments like Metasploitable 2. Unauthorized access to computer systems is illegal.
+`
+  }
 ];
