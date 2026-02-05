@@ -25,10 +25,10 @@ import { LoaderCircle, Wand2, AudioLines } from 'lucide-react';
 const voices = [
   { id: 'Algenib', name: 'Algenib (Male, US)' },
   { id: 'Achernar', name: 'Achernar (Female, US)' },
+  { id: 'Spica', name: 'Spica (Female, US)' },
+  { id: 'Antares', name: 'Antares (Male, US)' },
   { id: 'Sirius', name: 'Sirius (Male, UK)' },
   { id: 'Canopus', name: 'Canopus (Female, UK)' },
-  { id: 'Vega', name: 'Vega (Female, AU)' },
-  { id: 'Rigel', name: 'Rigel (Male, AU)' },
 ];
 
 export function VoiceWeaverClient() {
