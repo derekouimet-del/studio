@@ -343,5 +343,85 @@ SQLMap will ask for the language of the web application and the writable directo
 
 SQLMap is an incredibly powerful and aggressive tool. It should **NEVER** be used on systems you do not have explicit, written permission to test. Unauthorized use of SQLMap is illegal and will be detected by most modern security systems. Always practice in safe, sandboxed environments like the one used in this tutorial or DVWA (Damn Vulnerable Web Application).
 `
+  },
+  {
+    id: 'venv-tutorial',
+    title: 'Python Virtual Environments (venv)',
+    category: 'Development',
+    description: 'Learn how to create isolated Python environments to manage dependencies for different projects.',
+    content: `
+## What is a Virtual Environment?
+
+A virtual environment is a self-contained directory tree that contains a Python installation for a particular version of Python, plus a number of additional packages. It allows you to work on a specific project without affecting other projects or your system's global Python installation.
+
+**Why use it?**
+- **Dependency Management:** Different projects may require different versions of the same library. A virtual environment keeps these dependencies separate.
+- **Cleanliness:** It keeps your global \`site-packages\` directory clean and manageable.
+- **Reproducibility:** It makes it easy to replicate the exact environment on another machine by creating a \`requirements.txt\` file.
+
+---
+
+## Creating a Virtual Environment
+
+The command to create a virtual environment is the same across platforms, but the way you invoke the Python interpreter might differ.
+
+First, navigate to your project's directory:
+\`cd my_project_folder\`
+
+Then, run the following command. The last argument is the name of the directory where the environment will be created ('.venv' is a common convention).
+
+**macOS/Linux:**
+\`python3 -m venv .venv\`
+
+**Windows:**
+\`py -m venv .venv\` or \`python -m venv .venv\`
+
+You will now see a new '.venv' directory in your project folder.
+
+---
+
+## Activating the Environment
+
+Once created, you need to "activate" the environment. This modifies your shell's prompt to indicate which environment you're in and adjusts your PATH so that 'python' and 'pip' refer to the versions in the virtual environment.
+
+**macOS/Linux:**
+\`source .venv/bin/activate\`
+Your shell prompt will change to show '(.venv)' at the beginning.
+
+**Windows (Command Prompt):**
+\`".venv\\Scripts\\activate.bat"\`
+
+**Windows (PowerShell):**
+\`".venv\\Scripts\\Activate.ps1"\`
+(You may need to set the execution policy first: \`Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process\`)
+
+---
+
+## Working in the Environment
+
+With the environment active, you can now install packages using \`pip\`. These packages will be installed only within this virtual environment.
+
+**Install a package:**
+\`pip install requests\`
+
+**Create a requirements file:**
+This file lists all the packages your project depends on.
+\`pip freeze > requirements.txt\`
+
+**Install from a requirements file:**
+On another machine, you can replicate the environment with:
+\`pip install -r requirements.txt\`
+
+---
+
+## Deactivating the Environment
+
+When you're finished working, you can deactivate the environment.
+
+Simply type:
+\`deactivate\`
+
+Your shell prompt will return to normal, and 'python' and 'pip' will once again point to your system's global installations.
+`
   }
 ];
