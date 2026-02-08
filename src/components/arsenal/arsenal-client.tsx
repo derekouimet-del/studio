@@ -1,12 +1,24 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { tutorials, Tutorial } from '@/lib/tutorials';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Library, BookOpen } from 'lucide-react';
+import { Library } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Basic styling for prose-like content since we don't have typography plugin
+const proseStyles = `
+.prose h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; margin-bottom: 1rem; }
+.prose h2 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 0.5rem; }
+.prose h3 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+.prose p { line-height: 1.75; margin-bottom: 1rem; }
+.prose code { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); padding: 0.2rem 0.4rem; font-size: 0.9em; border-radius: 0.25rem; font-family: var(--font-code); }
+.prose pre { background-color: hsl(var(--card)); border: 1px solid hsl(var(--border)); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
+.prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
+.prose li { margin-bottom: 0.5rem; }
+`;
 
 export function ArsenalClient() {
   const [selectedTutorial, setSelectedTutorial] = useState<Tutorial | null>(null);
@@ -21,6 +33,20 @@ export function ArsenalClient() {
     });
     return grouped;
   }, []);
+
+  useEffect(() => {
+    const styleSheet = document.createElement("style");
+    styleSheet.innerText = proseStyles;
+    document.head.appendChild(styleSheet);
+    
+    // Cleanup function to remove the style when the component unmounts.
+    return () => {
+      if (document.head.contains(styleSheet)) {
+        document.head.removeChild(styleSheet);
+      }
+    };
+  }, []);
+
 
   return (
     <div className="grid lg:grid-cols-12 gap-8 h-[calc(100vh-10rem)]">
@@ -86,21 +112,4 @@ export function ArsenalClient() {
       </Card>
     </div>
   );
-}
-
-// Basic styling for prose-like content since we don't have typography plugin
-const proseStyles = `
-.prose h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 700; margin-bottom: 1rem; }
-.prose h2 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 0.5rem; }
-.prose h3 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
-.prose p { line-height: 1.75; margin-bottom: 1rem; }
-.prose code { background-color: hsl(var(--muted)); color: hsl(var(--foreground)); padding: 0.2rem 0.4rem; font-size: 0.9em; border-radius: 0.25rem; font-family: var(--font-code); }
-.prose pre { background-color: hsl(var(--card)); border: 1px solid hsl(var(--border)); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; }
-.prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; }
-.prose li { margin-bottom: 0.5rem; }
-`;
-const styleSheet = typeof window !== 'undefined' ? document.createElement("style") : null;
-if (styleSheet) {
-    styleSheet.innerText = proseStyles;
-    document.head.appendChild(styleSheet);
 }

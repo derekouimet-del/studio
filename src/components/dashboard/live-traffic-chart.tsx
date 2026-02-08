@@ -11,16 +11,18 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const initialData = Array.from({ length: 20 }, (_, i) => ({
-  time: new Date(Date.now() - (20 - i) * 5000).toLocaleTimeString(),
-  packets: Math.floor(Math.random() * 2000) + 500,
-  anomalies: Math.random() > 0.9 ? Math.floor(Math.random() * 50) : 0,
-}));
-
 export default function LiveTrafficChart() {
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState<any[]>([]);
 
   useEffect(() => {
+    // Generate initial data on client mount to avoid hydration mismatch
+    const initialData = Array.from({ length: 20 }, (_, i) => ({
+      time: new Date(Date.now() - (20 - i) * 5000).toLocaleTimeString(),
+      packets: Math.floor(Math.random() * 2000) + 500,
+      anomalies: Math.random() > 0.9 ? Math.floor(Math.random() * 50) : 0,
+    }));
+    setData(initialData);
+
     const interval = setInterval(() => {
       setData((prevData) => {
         const newDataPoint = {
