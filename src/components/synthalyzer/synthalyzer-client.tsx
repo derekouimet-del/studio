@@ -110,30 +110,88 @@ export function SynthalyzerClient() {
     }
     setIsLoading(false);
   };
+
+  const resizeImage = (file: File, maxWidth: number, maxHeight: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new window.Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height *= maxWidth / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width *= maxHeight / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+              reject('Could not get canvas context');
+              return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL(file.type));
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
   
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
     const currentTab = document.querySelector('[data-state="active"]')?.getAttribute('data-value');
-    if(currentTab === 'image' && !selectedFile.type.startsWith('image/')) {
+    const isImageTab = currentTab === 'image';
+    const isAudioTab = currentTab === 'audio';
+    const isVideoTab = currentTab === 'video';
+    
+    if(isImageTab && !selectedFile.type.startsWith('image/')) {
         toast({variant: 'destructive', title: 'Invalid File', description: 'Please upload an image file.'});
         return;
     }
-    if(currentTab === 'audio' && !selectedFile.type.startsWith('audio/')) {
+    if(isAudioTab && !selectedFile.type.startsWith('audio/')) {
         toast({variant: 'destructive', title: 'Invalid File', description: 'Please upload an audio file.'});
         return;
     }
-    if(currentTab === 'video' && !selectedFile.type.startsWith('video/')) {
+    if(isVideoTab && !selectedFile.type.startsWith('video/')) {
         toast({variant: 'destructive', title: 'Invalid File', description: 'Please upload a video file.'});
         return;
     }
 
     setFile(selectedFile);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFilePreview(reader.result as string);
-    };
-    reader.readAsDataURL(selectedFile);
+    
+    if (isImageTab) {
+        resizeImage(selectedFile, 1024, 1024)
+            .then(resizedDataUrl => {
+                setFilePreview(resizedDataUrl);
+                toast({ title: 'Image Ready', description: 'Image has been loaded and resized for analysis.'});
+            })
+            .catch(error => {
+                console.error("Image resizing failed:", error);
+                toast({ variant: 'destructive', title: 'Image Processing Failed', description: 'Could not load the image.' });
+            });
+    } else {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result as string);
+          toast({ title: 'File Ready', description: `${selectedFile.name} has been loaded.`});
+        };
+        reader.readAsDataURL(selectedFile);
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
