@@ -18,3 +18,4 @@ import '@/ai/flows/text-to-speech.ts';
 import '@/ai/flows/threat-view.ts';
 import '@/ai/flows/data-sieve.ts';
 import '@/ai/flows/network-scan.ts';
+import '@/ai/flows/cve-monitor.ts';

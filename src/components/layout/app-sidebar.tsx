@@ -20,6 +20,7 @@ import {
   Radar,
   Filter,
   Library,
+  Zap
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
   { href: '/threat-view', icon: Radar, label: 'ThreatView' },
+  { href: '/cve-monitor', icon: Zap, label: 'CVE Monitor' },
   { href: '/vulndb-explorer', icon: DatabaseZap, label: 'VulnDB Explorer' },
   { href: '/default-pass', icon: Users, label: 'Default Pass' },
   { href: '/datasieve', icon: Filter, label: 'DataSieve' },

@@ -1,4 +1,3 @@
-
 export type Tutorial = {
   id: string;
   title: string;

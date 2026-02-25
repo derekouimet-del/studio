@@ -1,4 +1,3 @@
-
 'use server';
 
 import { assessVulnerability, type VulnerabilityAssessmentInput } from '@/ai/flows/vulnerability-assessment';
@@ -18,6 +17,7 @@ import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech'
 import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
+import { getLatestVulnerabilities } from '@/ai/flows/cve-monitor';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -189,5 +189,15 @@ export async function networkScanAction(input: NetworkScanInput) {
   } catch (error: any) {
     console.error('Network scan failed:', error);
     return { success: false, error: error.message || 'An error occurred during the network scan.' };
+  }
+}
+
+export async function cveMonitorAction() {
+  try {
+    const result = await getLatestVulnerabilities();
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('CVE Monitor action failed:', error);
+    return { success: false, error: error.message || 'An error occurred while fetching the CVE feed.' };
   }
 }
