@@ -17,7 +17,7 @@ import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech'
 import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
-import { getLatestVulnerabilities } from '@/ai/flows/cve-monitor';
+import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -192,7 +192,7 @@ export async function networkScanAction(input: NetworkScanInput) {
   }
 }
 
-export async function cveMonitorAction() {
+export async function cveMonitorAction(): Promise<{ success: boolean; data?: CVEMonitorOutput; error?: string }> {
   try {
     const result = await getLatestVulnerabilities();
     return { success: true, data: result };
