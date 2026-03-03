@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, LoaderCircle, KeyRound, Link as LinkIcon, AlertTriangle, ShieldAlert, Shield } from 'lucide-react';
+import { Bot, LoaderCircle, ShieldAlert, Link as LinkIcon } from 'lucide-react';
 import { crawlWebsiteAction } from '@/app/actions';
 import type { CrawlWebsiteOutput } from '@/ai/flows/web-crawler';
 import { useToast } from '@/hooks/use-toast';
@@ -59,7 +59,7 @@ export function WebCrawlerClient() {
       });
     }
 
-    setIsCrawling(false);
+    setIsScanning(false);
   };
   
   const getStatusBadgeVariant = (statusCode: number) => {
@@ -87,7 +87,7 @@ export function WebCrawlerClient() {
         <CardHeader>
           <CardTitle>Intelligent Web Crawler</CardTitle>
           <CardDescription>
-            Analyzes web pages for structural links and uses a rule-based engine to identify high-risk credentials and secrets.
+            Analyzes web pages for structural links and uses a rule-based engine to identify high-risk credentials and secrets. Full values are displayed for verification.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -128,7 +128,7 @@ export function WebCrawlerClient() {
                       <ShieldAlert className={cn(credentials.length > 0 ? "text-destructive" : "text-muted-foreground")} /> 
                       Security Findings
                     </CardTitle>
-                    <CardDescription>Detected {credentials.length} secrets using rule-based and AI analysis.</CardDescription>
+                    <CardDescription>Detected {credentials.length} secrets. Showing full values for verification.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <Table>
@@ -136,7 +136,7 @@ export function WebCrawlerClient() {
                             <TableRow>
                                 <TableHead>Severity</TableHead>
                                 <TableHead>Type</TableHead>
-                                <TableHead>Redacted Value</TableHead>
+                                <TableHead>Value</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -151,7 +151,7 @@ export function WebCrawlerClient() {
                                 <TableRow key={cred.id}>
                                     <TableCell>{getSeverityBadge(cred.severity)}</TableCell>
                                     <TableCell className="font-medium">{cred.type}</TableCell>
-                                    <TableCell className="font-code text-xs">{cred.value}</TableCell>
+                                    <TableCell className="font-code text-xs break-all">{cred.value}</TableCell>
                                 </TableRow>
                               ))
                             )}

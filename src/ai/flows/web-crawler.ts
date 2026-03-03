@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview A Genkit flow that functions as a web crawler and security scanner.
- * Now enhanced with a sophisticated rule-based secret classifier.
+ * Now enhanced with a sophisticated rule-based secret classifier that returns full values.
  *
  * - crawlWebsite - A function that takes a target URL, fetches its content, and analyzes it for pages and secrets.
  * - CrawlWebsiteInput - The input type for the crawlWebsite function.
@@ -24,7 +24,7 @@ const CredentialResultSchema = z.object({
     id: z.string(),
     source: z.string().describe('The source file or location where the credential was found.'),
     type: z.string().describe('The type of credential (e.g., API Key, Password).'),
-    value: z.string().describe('The discovered credential value (redacted).'),
+    value: z.string().describe('The discovered credential value (full discovery).'),
     severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
     confidence: z.number().optional(),
     reason: z.string().optional(),
@@ -93,7 +93,7 @@ const crawlWebsiteFlow = ai.defineFlow(
       id: `rule-${i}`,
       source: targetUrl,
       type: f.type,
-      value: f.redactedValue,
+      value: f.value, // Now full value
       severity: f.severity,
       confidence: f.confidence,
       reason: f.reason,
@@ -106,7 +106,7 @@ const crawlWebsiteFlow = ai.defineFlow(
       return { pages: [], credentials: ruleBasedCredentials };
     }
 
-    // Merge results, giving preference to high-confidence rule-based findings
+    // Merge results
     const mergedCredentials = [...ruleBasedCredentials, ...output.credentials];
 
     return { 

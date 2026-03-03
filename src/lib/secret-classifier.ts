@@ -4,7 +4,7 @@ export type Finding = {
   type: string; // e.g. "WordPress Nonce", "JWT", "AWS Access Key"
   severity: Severity;
   confidence: number; // 0..1
-  redactedValue: string; // ALWAYS safe to display
+  value: string; // The full discovered value
   reason: string; // why it matched
   source?: string; // e.g. script id, url, line hint
   evidence?: string; // small context snippet (optional)
@@ -20,7 +20,6 @@ type Rule = {
   confidence: number;
   pattern: RegExp;
   predicate?: (m: RegExpExecArray, ctx: ClassifyContext) => boolean;
-  redact?: (raw: string) => string;
   reason: string;
   tags?: string[];
 };
@@ -30,14 +29,6 @@ export type ClassifyContext = {
   sourceId?: string; // script id, header name, etc.
   surroundingText?: string; // small nearby chunk if you have it
 };
-
-const DEFAULT_REDACT = (raw: string) => redactMiddle(raw, 4, 4);
-
-export function redactMiddle(s: string, left = 4, right = 4) {
-  if (!s) return s;
-  if (s.length <= left + right + 3) return `${s.slice(0, 2)}…${s.slice(-2)}`;
-  return `${s.slice(0, left)}…${s.slice(-right)}`;
-}
 
 // -------------------- RULES -------------------- //
 // Order matters: put "expected token" / nonce rules BEFORE generic token rules.
@@ -51,7 +42,6 @@ const rules: Rule[] = [
     pattern: /\b(?:wpnonce|wp[-]?nonce|et_frontend_nonce|(?:monarch|divi)[A-Za-z0-9_]nonce|nonce)\b\s*[:=]\s*["']([A-Za-z0-9]{10,})["']/i,
     reason: "Looks like a WordPress CSRF nonce token exposed in frontend JS (expected behavior).",
     tags: ["wordpress", "csrf", "nonce", "frontend"],
-    redact: (raw) => redactMiddle(raw, 3, 3),
   },
   {
     id: "jwt",
@@ -62,7 +52,6 @@ const rules: Rule[] = [
     pattern: /\b(eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,})\b/,
     reason: "JSON Web Token detected (may grant access if valid).",
     tags: ["auth", "jwt", "bearer"],
-    redact: (raw) => `${raw.slice(0, 12)}…${raw.slice(-12)}`,
   },
   {
     id: "aws-access-key",
@@ -73,7 +62,6 @@ const rules: Rule[] = [
     pattern: /\b((?:AKIA|ASIA|AIDA|AROA)[0-9A-Z]{16})\b/,
     reason: "AWS access key id format detected.",
     tags: ["aws", "cloud", "key"],
-    redact: (raw) => `${raw.slice(0, 4)}…${raw.slice(-4)}`,
   },
   {
     id: "aws-secret",
@@ -85,7 +73,6 @@ const rules: Rule[] = [
     predicate: (m, ctx) => /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? ""),
     reason: "40-char base64-ish string near AWS secret keywords (possible AWS secret).",
     tags: ["aws", "secret"],
-    redact: (raw) => redactMiddle(raw, 6, 4),
   },
   {
     id: "google-api-key",
@@ -96,7 +83,6 @@ const rules: Rule[] = [
     pattern: /\b(AIza[0-9A-Za-z-_]{35})\b/,
     reason: "Google API key pattern detected.",
     tags: ["google", "api", "key"],
-    redact: (raw) => `${raw.slice(0, 6)}…${raw.slice(-4)}`,
   },
   {
     id: "slack-token",
@@ -107,7 +93,6 @@ const rules: Rule[] = [
     pattern: /\b(xox[baprs]-[0-9A-Za-z-]{10,})\b/,
     reason: "Slack token format detected.",
     tags: ["slack", "token"],
-    redact: (raw) => `${raw.slice(0, 8)}…${raw.slice(-6)}`,
   },
   {
     id: "private-key",
@@ -118,7 +103,6 @@ const rules: Rule[] = [
     pattern: /-----BEGIN (?:RSA|EC|OPENSSH|DSA|PRIVATE) KEY-----[\s\S]+?-----END (?:RSA|EC|OPENSSH|DSA|PRIVATE) KEY-----/m,
     reason: "Private key block detected.",
     tags: ["private-key", "pem"],
-    redact: () => "-----BEGIN … KEY-----…-----END … KEY-----",
   },
   {
     id: "bearer-token",
@@ -129,7 +113,6 @@ const rules: Rule[] = [
     pattern: /\bBearer\s+([A-Za-z0-9._-]{20,})\b/,
     reason: "Bearer auth token detected.",
     tags: ["auth", "bearer"],
-    redact: (raw) => redactMiddle(raw, 8, 6),
   },
 ];
 
@@ -143,7 +126,6 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
   };
 
   for (const rule of rules) {
-    // Ensure we are using a global regex to find multiple matches
     const pattern = new RegExp(rule.pattern.source, rule.pattern.flags + (rule.pattern.flags.includes('g') ? '' : 'g'));
     
     let m: RegExpExecArray | null;
@@ -158,13 +140,12 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
 }
 
 function makeFinding(rule: Rule, raw: string, ctx: ClassifyContext): Finding {
-  const redactedValue = (rule.redact ?? DEFAULT_REDACT)(raw);
   return {
     type: rule.type,
     category: rule.category,
     severity: rule.severity,
     confidence: rule.confidence,
-    redactedValue,
+    value: raw,
     reason: rule.reason,
     source: ctx.sourceId ?? ctx.url,
     evidence: ctx.surroundingText ? ctx.surroundingText.slice(0, 200) : undefined,
@@ -176,7 +157,7 @@ function dedupeFindings(findings: Finding[]): Finding[] {
   const seen = new Map<string, Finding>();
 
   for (const f of findings) {
-    const key = `${f.type}|${f.redactedValue}|${f.source ?? ""}`;
+    const key = `${f.type}|${f.value}|${f.source ?? ""}`;
     const existing = seen.get(key);
 
     if (!existing || f.confidence > existing.confidence) {
