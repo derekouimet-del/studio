@@ -59,7 +59,7 @@ export function WebCrawlerClient() {
       });
     }
 
-    setIsScanning(false);
+    setIsCrawling(false);
   };
   
   const getStatusBadgeVariant = (statusCode: number) => {
