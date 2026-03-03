@@ -19,16 +19,17 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, LoaderCircle, KeyRound, Link as LinkIcon } from 'lucide-react';
+import { Bot, LoaderCircle, KeyRound, Link as LinkIcon, AlertTriangle, ShieldAlert, Shield } from 'lucide-react';
 import { crawlWebsiteAction } from '@/app/actions';
 import type { CrawlWebsiteOutput } from '@/ai/flows/web-crawler';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 type CrawlResult = CrawlWebsiteOutput['pages'][0];
 type FoundCredential = CrawlWebsiteOutput['credentials'][0];
 
 export function WebCrawlerClient() {
-  const [targetUrl, setTargetUrl] = useState('http://example.com');
+  const [targetUrl, setTargetUrl] = useState('https://example.com');
   const [isCrawling, setIsCrawling] = useState(false);
   const [pages, setPages] = useState<CrawlResult[]>([]);
   const [credentials, setCredentials] = useState<FoundCredential[]>([]);
@@ -44,6 +45,12 @@ export function WebCrawlerClient() {
     if (response.success && response.data) {
       setPages(response.data.pages || []);
       setCredentials(response.data.credentials || []);
+      if (response.data.credentials.length > 0) {
+        toast({
+          title: 'High Severity Findings!',
+          description: `Found ${response.data.credentials.length} potential secrets during crawl.`,
+        });
+      }
     } else {
       toast({
         variant: 'destructive',
@@ -55,11 +62,22 @@ export function WebCrawlerClient() {
     setIsCrawling(false);
   };
   
-    const getStatusBadgeVariant = (statusCode: number) => {
+  const getStatusBadgeVariant = (statusCode: number) => {
     if (statusCode >= 200 && statusCode < 300) return "success";
     if (statusCode >= 400) return "destructive";
     if (statusCode >= 300) return "secondary";
     return "outline";
+  };
+
+  const getSeverityBadge = (severity?: string) => {
+    switch (severity) {
+      case 'critical': return <Badge variant="destructive" className="bg-red-700">CRITICAL</Badge>;
+      case 'high': return <Badge variant="destructive">HIGH</Badge>;
+      case 'medium': return <Badge className="bg-yellow-600">MEDIUM</Badge>;
+      case 'low': return <Badge variant="secondary">LOW</Badge>;
+      case 'info': return <Badge variant="outline">INFO</Badge>;
+      default: return null;
+    }
   };
 
 
@@ -67,9 +85,9 @@ export function WebCrawlerClient() {
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Crawl Website</CardTitle>
+          <CardTitle>Intelligent Web Crawler</CardTitle>
           <CardDescription>
-            Enter a URL to crawl its pages and look for exposed credentials or sensitive files.
+            Analyzes web pages for structural links and uses a rule-based engine to identify high-risk credentials and secrets.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -80,6 +98,7 @@ export function WebCrawlerClient() {
               value={targetUrl}
               onChange={(e) => setTargetUrl(e.target.value)}
               disabled={isCrawling}
+              onKeyDown={(e) => e.key === 'Enter' && handleCrawl()}
             />
             <Button onClick={handleCrawl} disabled={isCrawling}>
               {isCrawling ? (
@@ -87,7 +106,7 @@ export function WebCrawlerClient() {
               ) : (
                 <Bot />
               )}
-              <span>{isCrawling ? 'Crawling...' : 'Crawl'}</span>
+              <span>{isCrawling ? 'Analyzing...' : 'Analyze Site'}</span>
             </Button>
           </div>
         </CardContent>
@@ -96,57 +115,68 @@ export function WebCrawlerClient() {
       {isCrawling && (
          <div className="flex flex-col items-center justify-center text-center p-8 space-y-4 rounded-lg border border-dashed">
             <LoaderCircle className="size-12 animate-spin text-primary" />
-            <h3 className="text-xl font-semibold">Crawling website...</h3>
-            <p className="text-muted-foreground">Discovering pages and searching for secrets.</p>
+            <h3 className="text-xl font-semibold">Performing Deep Crawl...</h3>
+            <p className="text-muted-foreground">Running classification rules and AI discovery on site content.</p>
         </div>
       )}
 
       {(pages.length > 0 || credentials.length > 0) && !isCrawling && (
         <div className="grid lg:grid-cols-2 gap-8">
-            <Card>
+            <Card className={cn(credentials.some(c => c.severity === 'critical' || c.severity === 'high') && "border-destructive/50")}>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><KeyRound className="text-destructive"/> Discovered Credentials</CardTitle>
-                    <CardDescription>Found {credentials.length} potential credentials or secrets.</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldAlert className={cn(credentials.length > 0 ? "text-destructive" : "text-muted-foreground")} /> 
+                      Security Findings
+                    </CardTitle>
+                    <CardDescription>Detected {credentials.length} secrets using rule-based and AI analysis.</CardDescription>
                 </CardHeader>
                 <CardContent>
                      <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead>Severity</TableHead>
                                 <TableHead>Type</TableHead>
-                                <TableHead>Source</TableHead>
-                                <TableHead>Value</TableHead>
+                                <TableHead>Redacted Value</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {credentials.map(cred => (
+                            {credentials.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                  No secrets detected on this page.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              credentials.map(cred => (
                                 <TableRow key={cred.id}>
-                                    <TableCell><Badge variant="destructive">{cred.type}</Badge></TableCell>
-                                    <TableCell className="font-code text-muted-foreground">{cred.source}</TableCell>
-                                    <TableCell className="font-code">{cred.value}</TableCell>
+                                    <TableCell>{getSeverityBadge(cred.severity)}</TableCell>
+                                    <TableCell className="font-medium">{cred.type}</TableCell>
+                                    <TableCell className="font-code text-xs">{cred.value}</TableCell>
                                 </TableRow>
-                            ))}
+                              ))
+                            )}
                         </TableBody>
                      </Table>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><LinkIcon /> Discovered Pages</CardTitle>
-                    <CardDescription>Found {pages.length} pages.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><LinkIcon /> Discovered Infrastructure</CardTitle>
+                    <CardDescription>Identified {pages.length} potential entry points or linked assets.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="max-h-[400px] overflow-y-auto">
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>URL</TableHead>
+                                    <TableHead>Asset URL</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {pages.map(page => (
                                     <TableRow key={page.id}>
-                                        <TableCell className="font-code">{page.url}</TableCell>
+                                        <TableCell className="font-code text-xs max-w-[200px] truncate" title={page.url}>{page.url}</TableCell>
                                         <TableCell>
                                             <Badge variant={getStatusBadgeVariant(page.statusCode) as any}>{page.statusCode}</Badge>
                                         </TableCell>

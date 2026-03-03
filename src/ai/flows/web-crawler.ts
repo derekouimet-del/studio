@@ -2,6 +2,7 @@
 
 /**
  * @fileOverview A Genkit flow that functions as a web crawler and security scanner.
+ * Now enhanced with a sophisticated rule-based secret classifier.
  *
  * - crawlWebsite - A function that takes a target URL, fetches its content, and analyzes it for pages and secrets.
  * - CrawlWebsiteInput - The input type for the crawlWebsite function.
@@ -10,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { classifyText } from '@/lib/secret-classifier';
 
 const PageResultSchema = z.object({
   id: z.string(),
@@ -22,7 +24,10 @@ const CredentialResultSchema = z.object({
     id: z.string(),
     source: z.string().describe('The source file or location where the credential was found.'),
     type: z.string().describe('The type of credential (e.g., API Key, Password).'),
-    value: z.string().describe('The discovered credential value.'),
+    value: z.string().describe('The discovered credential value (redacted).'),
+    severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
+    confidence: z.number().optional(),
+    reason: z.string().optional(),
 });
 
 const CrawlWebsiteInputSchema = z.object({
@@ -50,9 +55,9 @@ const analyzePageContentPrompt = ai.definePrompt({
 ---
 From this HTML, do the following:
 1. Extract up to 10 interesting links (<a href...>) from the page. Convert relative URLs to absolute URLs using the targetUrl as the base. For each link, create a PageResult object. Assume a status code of 200. The page title should be extracted from the link's anchor text.
-2. Identify up to 3 potential credentials or secrets. Look for API keys, passwords in comments, or other sensitive data. For each, create a CredentialResult object.
-3. For all results, generate a unique 'id' string (e.g., using a random number).
-4. Return a JSON object with 'pages' and 'credentials' arrays, matching the output schema. If nothing is found, return empty arrays.`,
+2. Identify potential credentials, hardcoded passwords, or other sensitive data that look out of place.
+3. For all results, generate a unique 'id' string.
+4. Return a JSON object with 'pages' and 'credentials' arrays. If nothing is found, return empty arrays.`,
 });
 
 const crawlWebsiteFlow = ai.defineFlow(
@@ -67,7 +72,6 @@ const crawlWebsiteFlow = ai.defineFlow(
         const response = await fetch(targetUrl, { headers: { 'User-Agent': 'ProSentry-Crawler/1.0' }});
         if (!response.ok) {
             console.error(`Failed to fetch ${targetUrl}: ${response.status} ${response.statusText}`);
-            // Return empty results if fetch fails, as the UI expects this schema.
             return { pages: [], credentials: [] };
         }
         
@@ -83,12 +87,31 @@ const crawlWebsiteFlow = ai.defineFlow(
         return { pages: [], credentials: [] };
     }
     
+    // Step 1: Run the fast rule-based classifier
+    const findings = classifyText(pageContent, { url: targetUrl });
+    const ruleBasedCredentials = findings.map((f, i) => ({
+      id: `rule-${i}`,
+      source: targetUrl,
+      type: f.type,
+      value: f.redactedValue,
+      severity: f.severity,
+      confidence: f.confidence,
+      reason: f.reason,
+    }));
+
+    // Step 2: Run the AI prompt for link extraction and nuanced discovery
     const {output} = await analyzePageContentPrompt({ targetUrl, pageContent });
     
     if (!output) {
-      return { pages: [], credentials: [] };
+      return { pages: [], credentials: ruleBasedCredentials };
     }
 
-    return output;
+    // Merge results, giving preference to high-confidence rule-based findings
+    const mergedCredentials = [...ruleBasedCredentials, ...output.credentials];
+
+    return { 
+      pages: output.pages || [], 
+      credentials: mergedCredentials 
+    };
   }
 );
