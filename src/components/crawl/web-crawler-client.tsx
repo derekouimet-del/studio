@@ -19,7 +19,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, LoaderCircle, ShieldAlert, Link as LinkIcon } from 'lucide-react';
+import { Bot, LoaderCircle, ShieldAlert, Link as LinkIcon, Clipboard } from 'lucide-react';
 import { crawlWebsiteAction } from '@/app/actions';
 import type { CrawlWebsiteOutput } from '@/ai/flows/web-crawler';
 import { useToast } from '@/hooks/use-toast';
@@ -62,6 +62,11 @@ export function WebCrawlerClient() {
     setIsCrawling(false);
   };
   
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied to clipboard!' });
+  };
+
   const getStatusBadgeVariant = (statusCode: number) => {
     if (statusCode >= 200 && statusCode < 300) return "success";
     if (statusCode >= 400) return "destructive";
@@ -137,12 +142,13 @@ export function WebCrawlerClient() {
                                 <TableHead>Severity</TableHead>
                                 <TableHead>Type</TableHead>
                                 <TableHead>Value</TableHead>
+                                <TableHead className="text-right"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {credentials.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                                   No secrets detected on this page.
                                 </TableCell>
                               </TableRow>
@@ -151,7 +157,12 @@ export function WebCrawlerClient() {
                                 <TableRow key={cred.id}>
                                     <TableCell>{getSeverityBadge(cred.severity)}</TableCell>
                                     <TableCell className="font-medium">{cred.type}</TableCell>
-                                    <TableCell className="font-code text-xs break-all">{cred.value}</TableCell>
+                                    <TableCell className="font-code text-xs break-all max-w-[200px]">{cred.value}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button size="icon" variant="ghost" onClick={() => copyToClipboard(cred.value)}>
+                                            <Clipboard className="size-4" />
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                               ))
                             )}
