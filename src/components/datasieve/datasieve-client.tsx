@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { dataSieveAction } from '@/app/actions';
-import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2 } from 'lucide-react';
+import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert } from 'lucide-react';
 import type { DataSieveOutput } from '@/ai/flows/data-sieve';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -45,8 +45,9 @@ export function DataSieveClient() {
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
-    if (selectedFile.size > 5 * 1024 * 1024) { // 5 MB limit
-        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 5MB for analysis.' });
+    // Increased threshold for beefed up sieve, but still keeping a safety cap for server actions
+    if (selectedFile.size > 10 * 1024 * 1024) { 
+        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 10MB.' });
         return;
     }
 
@@ -74,7 +75,11 @@ export function DataSieveClient() {
         if (response.data.foundData.length === 0) {
             toast({ title: 'Analysis Complete', description: 'No sensitive data was found.' });
         } else {
-             toast({ title: 'Analysis Complete', description: `Found ${response.data.foundData.length} items.` });
+             toast({ 
+                title: 'Deep Sieve Complete', 
+                description: `Discovered ${response.data.foundData.length} items with classification.`,
+                variant: response.data.foundData.some(d => d.severity === 'critical') ? 'destructive' : 'default'
+             });
         }
     } else {
       toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error });
@@ -87,14 +92,25 @@ export function DataSieveClient() {
     toast({ title: 'Copied to clipboard!' });
   };
 
+  const getSeverityBadge = (severity?: string) => {
+    switch (severity) {
+      case 'critical': return <Badge variant="destructive" className="bg-red-700 animate-pulse">CRITICAL</Badge>;
+      case 'high': return <Badge variant="destructive">HIGH</Badge>;
+      case 'medium': return <Badge className="bg-yellow-600">MEDIUM</Badge>;
+      case 'low': return <Badge variant="secondary">LOW</Badge>;
+      case 'info': return <Badge variant="outline">INFO</Badge>;
+      default: return null;
+    }
+  };
+
 
   return (
     <div className="space-y-8">
       <Card>
           <CardHeader>
-            <CardTitle>DataSieve Sensitive Data Extractor</CardTitle>
+            <CardTitle>DataSieve Pro: Deep Secret Extractor</CardTitle>
             <CardDescription>
-                Upload a text-based file (e.g., .txt, .log, .json, .csv, source code) to scan for sensitive information like credentials, PII, and API keys.
+                Upload source code, logs, or config files. DataSieve runs a high-performance classification engine + GenAI to find every leak.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -117,65 +133,82 @@ export function DataSieveClient() {
               {file && (
                   <div className="p-3 border rounded-md bg-muted/50 flex justify-between items-center">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <FileText />
+                        <FileText className="text-primary" />
                         <span>Loaded: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(2)} KB)</span>
                     </div>
                     <Button variant="ghost" size="icon" onClick={resetState}><Trash2/></Button>
                   </div>
               )}
-              <div className="p-3 bg-blue-950/50 border border-blue-400/30 rounded-lg text-blue-300 flex items-start gap-3">
-                  <Info className="size-5 mt-1 flex-shrink-0"/>
-                  <div className="text-sm">
-                      <p className="font-semibold">PCAP file support is not yet available.</p>
-                      <p className="opacity-90">This tool currently analyzes text-based files. Direct PCAP parsing is a complex feature planned for a future update.</p>
+              <div className="p-3 bg-muted/30 border rounded-lg flex items-start gap-3">
+                  <ShieldAlert className="size-5 mt-1 flex-shrink-0 text-primary"/>
+                  <div className="text-xs text-muted-foreground">
+                      <p className="font-semibold text-foreground">Multi-Pass Analysis Enabled</p>
+                      <p>Files are scanned for specific patterns (AWS, Google Cloud, JWT) instantly, followed by a targeted AI scan for logical credentials.</p>
                   </div>
               </div>
-              <Button onClick={handleAnalyze} disabled={isLoading || !fileContent} className="w-full">
+              <Button onClick={handleAnalyze} disabled={isLoading || !fileContent} className="w-full h-12 text-lg">
                 {isLoading ? <LoaderCircle className="animate-spin" /> : <Filter />}
-                {isLoading ? 'Analyzing File...' : 'Sieve Data'}
+                {isLoading ? 'Running Deep Sieve...' : 'Sieve Data'}
               </Button>
           </CardContent>
       </Card>
       
       {isLoading && (
-         <div className="flex flex-col items-center justify-center text-center p-8 space-y-4 rounded-lg border border-dashed">
-            <LoaderCircle className="size-12 animate-spin text-primary" />
-            <h3 className="text-xl font-semibold">Analyzing file contents...</h3>
-            <p className="text-muted-foreground">The AI is scanning for sensitive data. This may take a moment for large files.</p>
+         <div className="flex flex-col items-center justify-center text-center p-12 space-y-4 rounded-lg border border-dashed animate-in fade-in zoom-in">
+            <LoaderCircle className="size-16 animate-spin text-primary" />
+            <h3 className="text-xl font-semibold">Performing Deep Content Analysis...</h3>
+            <p className="text-muted-foreground">The dual-pass engine is extracting secrets. This may take longer for large files.</p>
         </div>
       )}
 
       {results && !isLoading && (
-        <Card>
+        <Card className={cn(results.some(r => r.severity === 'critical') && "border-destructive/50")}>
             <CardHeader>
-                <CardTitle>Analysis Results</CardTitle>
-                <CardDescription>Found {results.length} piece(s) of potentially sensitive information in {file?.name}.</CardDescription>
+                <CardTitle className="flex items-center gap-2">
+                    <Info className="text-primary"/> Analysis Results
+                </CardTitle>
+                <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
+                            <TableHead className="w-[120px]">Severity</TableHead>
                             <TableHead className="w-[150px]">Type</TableHead>
-                            <TableHead>Value</TableHead>
-                            <TableHead>Context</TableHead>
-                            <TableHead className="text-right"></TableHead>
+                            <TableHead>Value (Unredacted)</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {results.map((item) => (
-                            <TableRow key={item.id}>
-                                <TableCell>
-                                    <Badge variant="destructive">{item.type}</Badge>
-                                </TableCell>
-                                <TableCell className="font-code">{item.value}</TableCell>
-                                <TableCell className="font-code text-muted-foreground text-xs italic">...{item.context}...</TableCell>
-                                <TableCell className="text-right">
-                                    <Button size="icon" variant="ghost" onClick={() => copyToClipboard(item.value)}>
-                                        <Copy className="size-4" />
-                                    </Button>
+                        {results.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={4} className="text-center py-12 text-muted-foreground">
+                                    No sensitive data identified in this file.
                                 </TableCell>
                             </TableRow>
-                        ))}
+                        ) : (
+                            results.map((item) => (
+                                <TableRow key={item.id} className={cn(item.severity === 'critical' && "bg-destructive/5")}>
+                                    <TableCell>{getSeverityBadge(item.severity)}</TableCell>
+                                    <TableCell>
+                                        <span className="font-semibold">{item.type}</span>
+                                    </TableCell>
+                                    <TableCell className="font-code text-xs break-all max-w-[300px]">
+                                        {item.value}
+                                        {item.context && (
+                                            <div className="mt-1 text-[10px] text-muted-foreground italic truncate">
+                                                Context: ...{item.context.slice(0, 100)}...
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button size="icon" variant="ghost" onClick={() => copyToClipboard(item.value)}>
+                                            <Copy className="size-4" />
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        )}
                     </TableBody>
                 </Table>
             </CardContent>

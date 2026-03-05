@@ -2,6 +2,7 @@
 
 /**
  * @fileOverview A Genkit flow that analyzes text content for sensitive data.
+ * Enhanced with the high-performance rule-based secret classifier.
  *
  * - dataSieve - A function that takes text content and extracts sensitive information.
  * - DataSieveInput - The input type for the function.
@@ -10,6 +11,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { classifyText } from '@/lib/secret-classifier';
 
 const DataSieveInputSchema = z.object({
   content: z.string().describe('The text content to analyze.'),
@@ -21,6 +23,7 @@ const FoundDataSchema = z.object({
     type: z.string().describe('The type of data found (e.g., "Email", "Credit Card", "SSN", "API Key", "Password").'),
     value: z.string().describe('The sensitive data value itself.'),
     context: z.string().describe('A small snippet of the surrounding text for context.').optional(),
+    severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
 });
 
 const DataSieveOutputSchema = z.object({
@@ -32,25 +35,24 @@ export async function dataSieve(input: DataSieveInput): Promise<DataSieveOutput>
   return dataSieveFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'dataSievePrompt',
+const analyzeNuancedLeaksPrompt = ai.definePrompt({
+  name: 'analyzeNuancedLeaksPrompt',
   input: { schema: DataSieveInputSchema },
   output: { schema: DataSieveOutputSchema },
-  prompt: `You are a security analysis tool named DataSieve. Your task is to meticulously scan the provided text content for any form of sensitive information.
+  prompt: `You are an advanced digital forensics agent named DataSieve. Your task is to find nuanced sensitive information that simple patterns might miss.
 
-Extract the following types of data:
-- Email addresses
-- Credit Card numbers
-- Social Security Numbers (SSNs)
-- API Keys (look for common prefixes like 'sk_', 'pk_', 'rk_' and high-entropy strings)
-- Passwords (look for explicit labels like 'password:', 'pass:', 'secret=')
-- Private Keys (look for "-----BEGIN RSA PRIVATE KEY-----" or similar markers)
+Focus on:
+- Hardcoded credentials in code or configs (e.g., "const db_pass = '...'")
+- Private SSH keys or certificates
+- Mentions of internal secrets, environment variables, or tokens
+- Personal Identifiable Information (PII) like SSNs or Credit Card numbers found in unstructured text
 
-For each piece of sensitive data you find, create a unique ID, identify its type, extract its value, and provide a small snippet of the surrounding text for context.
+For each finding, provide:
+1. A descriptive type
+2. The full secret value
+3. A snippet of context
 
-Do not find more than 50 items in total.
-
-Return a JSON object with a 'foundData' array. If nothing is found, return an empty array.
+Return a JSON object with a 'foundData' array.
 
 Content to analyze:
 ---
@@ -67,17 +69,45 @@ const dataSieveFlow = ai.defineFlow(
     outputSchema: DataSieveOutputSchema,
   },
   async ({ content }) => {
-    // For very large files, we might need to chunk the content.
-    // For now, we'll send the whole thing, but this is a future optimization point.
-    const MAX_LENGTH = 500000; // Limit content size to avoid hitting model limits
-    const truncatedContent = content.length > MAX_LENGTH ? content.substring(0, MAX_LENGTH) : content;
+    // Pass 1: Fast Rule-Based Classification (handles full content efficiently)
+    const ruleFindings = classifyText(content);
+    const rulesResults = ruleFindings.map((f, i) => ({
+        id: `rule-${i}`,
+        type: f.type,
+        value: f.value,
+        context: f.evidence,
+        severity: f.severity,
+    }));
 
-    const { output } = await prompt({ content: truncatedContent });
+    // Pass 2: Nuanced AI Discovery
+    // We limit the AI pass to a reasonable chunk to prevent timeout/limit issues on massive files,
+    // while the rule-based pass covers everything.
+    const AI_LIMIT = 50000; 
+    const aiContent = content.length > AI_LIMIT ? content.substring(0, AI_LIMIT) : content;
     
-    if (!output) {
-      return { foundData: [] };
+    let aiResults: any[] = [];
+    try {
+        const { output } = await analyzeNuancedLeaksPrompt({ content: aiContent });
+        if (output?.foundData) {
+            aiResults = output.foundData.map((d, i) => ({
+                ...d,
+                id: `ai-${i}`,
+                severity: d.severity || 'medium'
+            }));
+        }
+    } catch (e) {
+        console.error("AI Sieve pass failed:", e);
     }
 
-    return output;
+    // Merge results and deduplicate by value
+    const merged = [...rulesResults, ...aiResults];
+    const uniqueMap = new Map();
+    merged.forEach(item => {
+        if (!uniqueMap.has(item.value)) {
+            uniqueMap.set(item.value, item);
+        }
+    });
+
+    return { foundData: Array.from(uniqueMap.values()) };
   }
 );
