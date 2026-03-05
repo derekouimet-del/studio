@@ -20,7 +20,8 @@ import {
   Radar,
   Filter,
   Library,
-  Zap
+  Zap,
+  Search
 } from 'lucide-react';
 import {
   Sidebar,
@@ -37,6 +38,7 @@ const navItems = [
   { href: '/attack-surface', icon: Globe, label: 'Attack Surface' },
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
+  { href: '/fofa', icon: Search, label: 'FofaForge' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
   { href: '/threat-view', icon: Radar, label: 'ThreatView' },

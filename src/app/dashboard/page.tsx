@@ -1,4 +1,3 @@
-
 import { Header } from '@/components/layout/header';
 import {
   Card,
@@ -19,6 +18,7 @@ import {
   Hammer,
   DatabaseZap,
   ArrowRight,
+  Search,
 } from 'lucide-react';
 
 const tools = [
@@ -27,6 +27,12 @@ const tools = [
     icon: Globe,
     label: 'Attack Surface Mapper',
     description: 'Discover live subdomains and IPs for a target domain.',
+  },
+  {
+    href: '/fofa',
+    icon: Search,
+    label: 'FofaForge',
+    description: 'Build specialized FOFA queries using natural language.',
   },
   {
     href: '/scan',

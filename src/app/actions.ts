@@ -18,6 +18,7 @@ import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
 import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
+import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -200,4 +201,14 @@ export async function cveMonitorAction(): Promise<{ success: boolean; data?: CVE
     console.error('CVE Monitor action failed:', error);
     return { success: false, error: error.message || 'An error occurred while fetching the CVE feed.' };
   }
+}
+
+export async function fofaSuggestionAction(input: FofaSuggestionInput) {
+    try {
+        const result = await fofaSuggestion(input);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('FOFA suggestion failed:', error);
+        return { success: false, error: 'An error occurred while generating the FOFA query.' };
+    }
 }
