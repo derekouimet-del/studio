@@ -1,3 +1,5 @@
+'use client';
+
 export type Severity = "info" | "low" | "medium" | "high" | "critical";
 
 export type Finding = {
@@ -31,7 +33,6 @@ export type ClassifyContext = {
 };
 
 // -------------------- RULES -------------------- //
-// Order matters: put "expected token" / nonce rules BEFORE generic token rules.
 const rules: Rule[] = [
   {
     id: "wp-nonce-common",
@@ -57,9 +58,9 @@ const rules: Rule[] = [
     id: "aws-access-key",
     type: "AWS Access Key ID",
     category: "key",
-    severity: "critical",
+    severity: "high", // Base severity, upgraded to critical if secret is nearby
     confidence: 0.95,
-    pattern: /\b((?:AKIA|ASIA|AIDA|AROA)[0-9A-Z]{16})\b/,
+    pattern: /\b((?:AKIA|ASIA|AGPA|AIDA|AROA)[0-9A-Z]{16})\b/,
     reason: "AWS access key id format detected.",
     tags: ["aws", "cloud", "key"],
   },
@@ -67,11 +68,14 @@ const rules: Rule[] = [
     id: "aws-secret",
     type: "AWS Secret Access Key",
     category: "secret",
-    severity: "critical",
+    severity: "info", // Default to info, upgraded to critical in classifyText if paired
     confidence: 0.8,
     pattern: /\b([A-Za-z0-9/+=]{40})\b/,
-    predicate: (m, ctx) => /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? ""),
-    reason: "40-char base64-ish string near AWS secret keywords (possible AWS secret).",
+    predicate: (m, ctx) => {
+        // Broad check for AWS keywords to reduce random noise when no ID is present
+        return /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? "");
+    },
+    reason: "Possible AWS secret format detected. Upgraded to CRITICAL if a matching Access Key ID is found.",
     tags: ["aws", "secret"],
   },
   {
@@ -119,10 +123,10 @@ const rules: Rule[] = [
 // -------------------- CLASSIFIER --------------------
 
 export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[] {
-  const findings: Finding[] = [];
+  let allFindings: Finding[] = [];
   const baseCtx: ClassifyContext = {
     ...ctx,
-    surroundingText: ctx.surroundingText ?? text.slice(0, 5000),
+    surroundingText: ctx.surroundingText ?? text.slice(0, 10000), // Larger context window for pair detection
   };
 
   for (const rule of rules) {
@@ -130,13 +134,47 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
     
     let m: RegExpExecArray | null;
     while ((m = pattern.exec(text))) {
-      if (rule.predicate && !rule.predicate(m, baseCtx)) continue;
+      // Create a local context window for the predicate
+      const start = Math.max(0, m.index - 500);
+      const end = Math.min(text.length, m.index + m[0].length + 500);
+      const localCtx = { ...baseCtx, surroundingText: text.slice(start, end) };
+
+      if (rule.predicate && !rule.predicate(m, localCtx)) continue;
       const raw = (m[1] ?? m[0]) as string;
-      findings.push(makeFinding(rule, raw, baseCtx));
+      allFindings.push(makeFinding(rule, raw, localCtx));
     }
   }
 
-  return dedupeFindings(findings);
+  const deduped = dedupeFindings(allFindings);
+
+  // --- AWS Pair Logic ---
+  const hasAwsKeyId = deduped.some(f => f.type === "AWS Access Key ID");
+  
+  return deduped.map(f => {
+      if (f.type === "AWS Secret Access Key") {
+          if (hasAwsKeyId) {
+              return { 
+                  ...f, 
+                  severity: "critical", 
+                  reason: "CRITICAL: AWS Credential pair detected. Both Access Key ID and Secret Access Key found in this content." 
+              };
+          } else {
+              return { 
+                  ...f, 
+                  severity: "info", 
+                  reason: "INFO: Possible token-like string. AWS Secret format found but no matching Access Key ID detected nearby." 
+              };
+          }
+      }
+      if (f.type === "AWS Access Key ID" && hasAwsKeyId && deduped.some(found => found.type === "AWS Secret Access Key")) {
+          return {
+              ...f,
+              severity: "critical",
+              reason: "CRITICAL: AWS Access Key ID found as part of a complete credential pair."
+          };
+      }
+      return f;
+  });
 }
 
 function makeFinding(rule: Rule, raw: string, ctx: ClassifyContext): Finding {

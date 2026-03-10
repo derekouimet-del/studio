@@ -47,8 +47,9 @@ export function WebCrawlerClient() {
       setCredentials(response.data.credentials || []);
       if (response.data.credentials.length > 0) {
         toast({
-          title: 'High Severity Findings!',
+          title: 'Deep Crawl Findings',
           description: `Found ${response.data.credentials.length} potential secrets during crawl.`,
+          variant: response.data.credentials.some(c => c.severity === 'critical') ? 'destructive' : 'default'
         });
       }
     } else {
@@ -76,7 +77,7 @@ export function WebCrawlerClient() {
 
   const getSeverityBadge = (severity?: string) => {
     switch (severity) {
-      case 'critical': return <Badge variant="destructive" className="bg-red-700">CRITICAL</Badge>;
+      case 'critical': return <Badge variant="destructive" className="bg-red-700 animate-pulse">CRITICAL</Badge>;
       case 'high': return <Badge variant="destructive">HIGH</Badge>;
       case 'medium': return <Badge className="bg-yellow-600">MEDIUM</Badge>;
       case 'low': return <Badge variant="secondary">LOW</Badge>;
@@ -92,7 +93,7 @@ export function WebCrawlerClient() {
         <CardHeader>
           <CardTitle>Intelligent Web Crawler</CardTitle>
           <CardDescription>
-            Analyzes web pages for structural links and uses a rule-based engine to identify high-risk credentials and secrets. Full values are displayed for verification.
+            Analyzes web pages for structural links and uses a rule-based engine to identify high-risk credentials. AWS leaks are now validated as pairs for critical reporting.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -154,10 +155,10 @@ export function WebCrawlerClient() {
                               </TableRow>
                             ) : (
                               credentials.map(cred => (
-                                <TableRow key={cred.id}>
+                                <TableRow key={cred.id} className={cn(cred.severity === 'critical' && "bg-destructive/5")}>
                                     <TableCell>{getSeverityBadge(cred.severity)}</TableCell>
-                                    <TableCell className="font-medium">{cred.type}</TableCell>
-                                    <TableCell className="font-code text-xs break-all max-w-[200px]">{cred.value}</TableCell>
+                                    <TableCell className="font-medium text-xs">{cred.type}</TableCell>
+                                    <TableCell className="font-code text-[10px] break-all max-w-[150px]">{cred.value}</TableCell>
                                     <TableCell className="text-right">
                                         <Button size="icon" variant="ghost" onClick={() => copyToClipboard(cred.value)}>
                                             <Clipboard className="size-4" />
