@@ -4,7 +4,7 @@ export type Finding = {
   type: string; // e.g. "WordPress Nonce", "JWT", "AWS Access Key"
   severity: Severity;
   confidence: number; // 0..1
-  value: string; // The full discovered value
+  value: string; // The full discovered value (unredacted)
   reason: string; // why it matched
   source?: string; // e.g. script id, url, line hint
   evidence?: string; // small context snippet (optional)
@@ -70,9 +70,10 @@ const rules: Rule[] = [
     confidence: 0.8,
     pattern: /\b([A-Za-z0-9/+=]{40})\b/,
     predicate: (m, ctx) => {
+        // Broad look for context keywords
         return /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? "");
     },
-    reason: "Possible AWS secret format detected. Upgraded to CRITICAL if a matching Access Key ID is found.",
+    reason: "Possible AWS secret format detected. Upgraded to CRITICAL if a matching Access Key ID is found in the same content.",
     tags: ["aws", "secret"],
   },
   {
@@ -125,15 +126,18 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
   };
 
   for (const rule of rules) {
+    // Create a new regex instance with global flag to find all matches
     const pattern = new RegExp(rule.pattern.source, rule.pattern.flags + (rule.pattern.flags.includes('g') ? '' : 'g'));
     
     let m: RegExpExecArray | null;
     while ((m = pattern.exec(text))) {
+      // Provide localized context for predicates
       const start = Math.max(0, m.index - 500);
       const end = Math.min(text.length, m.index + m[0].length + 500);
       const localCtx = { ...baseCtx, surroundingText: text.slice(start, end) };
 
       if (rule.predicate && !rule.predicate(m, localCtx)) continue;
+      
       const raw = (m[1] ?? m[0]) as string;
       allFindings.push(makeFinding(rule, raw, localCtx));
     }
@@ -141,6 +145,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
 
   const deduped = dedupeFindings(allFindings);
 
+  // AWS Pair Validation Logic
   const hasAwsKeyId = deduped.some(f => f.type === "AWS Access Key ID");
   const hasAwsSecret = deduped.some(f => f.type === "AWS Secret Access Key");
   
@@ -156,7 +161,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
               return { 
                   ...f, 
                   severity: "info", 
-                  reason: "INFO: Possible token-like string. AWS Secret format found but no matching Access Key ID detected nearby." 
+                  reason: "INFO: Possible token-like string. AWS Secret format found but no matching Access Key ID detected in this content." 
               };
           }
       }
@@ -177,7 +182,7 @@ function makeFinding(rule: Rule, raw: string, ctx: ClassifyContext): Finding {
     category: rule.category,
     severity: rule.severity,
     confidence: rule.confidence,
-    value: raw,
+    value: raw, // Unredacted
     reason: rule.reason,
     source: ctx.sourceId ?? ctx.url,
     evidence: ctx.surroundingText ? ctx.surroundingText.slice(0, 200) : undefined,

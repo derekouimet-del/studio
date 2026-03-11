@@ -109,6 +109,7 @@ const crawlWebsiteFlow = ai.defineFlow(
     }));
 
     // Step 2: Run the AI prompt for link extraction and nuanced discovery
+    // AI pass is limited to prevent tokens/timeout issues, while Rule pass covers the whole page.
     const AI_LIMIT = 50000;
     const aiContent = pageContent.length > AI_LIMIT ? pageContent.substring(0, AI_LIMIT) : pageContent;
 
