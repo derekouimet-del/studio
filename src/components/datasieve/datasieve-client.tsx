@@ -45,9 +45,9 @@ export function DataSieveClient() {
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
-    // Increased threshold for beefed up sieve, but still keeping a safety cap for server actions
-    if (selectedFile.size > 10 * 1024 * 1024) { 
-        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 10MB.' });
+    // Limit increased to 15MB to stay within the 20MB server action limit (accounting for JSON overhead)
+    if (selectedFile.size > 15 * 1024 * 1024) { 
+        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 15MB.' });
         return;
     }
 
@@ -82,7 +82,7 @@ export function DataSieveClient() {
              });
         }
     } else {
-      toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error });
+      toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error || 'The server returned an unexpected response. The file might be too large.' });
     }
     setIsLoading(false);
   };

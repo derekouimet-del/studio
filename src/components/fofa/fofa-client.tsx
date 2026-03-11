@@ -16,6 +16,15 @@ type Message = {
   query?: string | null;
 };
 
+// Helper to base64 encode UTF-8 strings in the browser
+function base64Encode(str: string) {
+    try {
+        return btoa(unescape(encodeURIComponent(str)));
+    } catch (e) {
+        return btoa(str);
+    }
+}
+
 export function FofaForgeClient() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -95,7 +104,7 @@ export function FofaForgeClient() {
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm" asChild className="text-xs h-7">
-                            <a href={`https://fofa.info/result?qbase64=${Buffer.from(message.query).toString('base64')}`} target="_blank" rel="noopener noreferrer">
+                            <a href={`https://fofa.info/result?qbase64=${base64Encode(message.query)}`} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-3 w-3 mr-1" /> View on FOFA
                             </a>
                         </Button>
