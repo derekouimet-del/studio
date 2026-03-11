@@ -149,6 +149,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
 
   // --- AWS Pair Logic ---
   const hasAwsKeyId = deduped.some(f => f.type === "AWS Access Key ID");
+  const hasAwsSecret = deduped.some(f => f.type === "AWS Secret Access Key");
   
   return deduped.map(f => {
       if (f.type === "AWS Secret Access Key") {
@@ -166,7 +167,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
               };
           }
       }
-      if (f.type === "AWS Access Key ID" && hasAwsKeyId && deduped.some(found => found.type === "AWS Secret Access Key")) {
+      if (f.type === "AWS Access Key ID" && hasAwsSecret) {
           return {
               ...f,
               severity: "critical",
