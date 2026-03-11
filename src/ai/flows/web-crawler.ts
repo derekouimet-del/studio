@@ -100,17 +100,23 @@ const crawlWebsiteFlow = ai.defineFlow(
     }));
 
     // Step 2: Run the AI prompt for link extraction and nuanced discovery
-    const {output} = await analyzePageContentPrompt({ targetUrl, pageContent });
-    
-    if (!output) {
-      return { pages: [], credentials: ruleBasedCredentials };
-    }
+    // We limit the content size to prevent context window overflows
+    const AI_LIMIT = 50000;
+    const aiContent = pageContent.length > AI_LIMIT ? pageContent.substring(0, AI_LIMIT) : pageContent;
 
+    let aiOutput: any = { pages: [], credentials: [] };
+    try {
+        const {output} = await analyzePageContentPrompt({ targetUrl, pageContent: aiContent });
+        if (output) aiOutput = output;
+    } catch (e) {
+        console.error("AI Crawl analysis failed:", e);
+    }
+    
     // Merge results
-    const mergedCredentials = [...ruleBasedCredentials, ...output.credentials];
+    const mergedCredentials = [...ruleBasedCredentials, ...(aiOutput.credentials || [])];
 
     return { 
-      pages: output.pages || [], 
+      pages: aiOutput.pages || [], 
       credentials: mergedCredentials 
     };
   }
