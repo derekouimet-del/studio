@@ -69,7 +69,7 @@ export function WebCrawlerClient() {
   };
 
   const getStatusBadgeVariant = (statusCode: number) => {
-    if (statusCode >= 200 && statusCode < 300) return "success";
+    if (statusCode >= 200 && statusCode < 300) return "default";
     if (statusCode >= 400) return "destructive";
     if (statusCode >= 300) return "secondary";
     return "outline";

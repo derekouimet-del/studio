@@ -68,45 +68,53 @@ const crawlWebsiteFlow = ai.defineFlow(
   },
   async ({ targetUrl }) => {
     let pageContent: string;
+    let urlToFetch = targetUrl.trim();
+    if (!urlToFetch.startsWith('http://') && !urlToFetch.startsWith('https://')) {
+        urlToFetch = `https://${urlToFetch}`;
+    }
+
     try {
-        const response = await fetch(targetUrl, { headers: { 'User-Agent': 'ProSentry-Crawler/1.0' }});
+        const response = await fetch(urlToFetch, { 
+            headers: { 'User-Agent': 'Pen-Quest-Crawler/1.0' },
+            next: { revalidate: 0 }
+        });
+        
         if (!response.ok) {
-            console.error(`Failed to fetch ${targetUrl}: ${response.status} ${response.statusText}`);
+            console.error(`Failed to fetch ${urlToFetch}: ${response.status} ${response.statusText}`);
             return { pages: [], credentials: [] };
         }
         
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('text/html')) {
-            console.error(`Skipping ${targetUrl} because content-type is not text/html.`);
+            console.error(`Skipping ${urlToFetch} because content-type is not text/html.`);
             return { pages: [], credentials: [] };
         }
 
         pageContent = await response.text();
     } catch (e: any) {
-        console.error(`Exception while fetching ${targetUrl}:`, e.message);
+        console.error(`Exception while fetching ${urlToFetch}:`, e.message);
         return { pages: [], credentials: [] };
     }
     
     // Step 1: Run the fast rule-based classifier
-    const findings = classifyText(pageContent, { url: targetUrl });
+    const findings = classifyText(pageContent, { url: urlToFetch });
     const ruleBasedCredentials = findings.map((f, i) => ({
       id: `rule-${i}`,
-      source: targetUrl,
+      source: urlToFetch,
       type: f.type,
-      value: f.value, // Now full value
+      value: f.value,
       severity: f.severity,
       confidence: f.confidence,
       reason: f.reason,
     }));
 
     // Step 2: Run the AI prompt for link extraction and nuanced discovery
-    // We limit the content size to prevent context window overflows
     const AI_LIMIT = 50000;
     const aiContent = pageContent.length > AI_LIMIT ? pageContent.substring(0, AI_LIMIT) : pageContent;
 
     let aiOutput: any = { pages: [], credentials: [] };
     try {
-        const {output} = await analyzePageContentPrompt({ targetUrl, pageContent: aiContent });
+        const {output} = await analyzePageContentPrompt({ targetUrl: urlToFetch, pageContent: aiContent });
         if (output) aiOutput = output;
     } catch (e) {
         console.error("AI Crawl analysis failed:", e);
