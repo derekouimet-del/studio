@@ -80,8 +80,7 @@ const dataSieveFlow = ai.defineFlow(
     }));
 
     // Pass 2: Nuanced AI Discovery
-    // We limit the AI pass to a reasonable chunk to prevent timeout/limit issues on massive files,
-    // while the rule-based pass covers everything.
+    // AI pass is limited to prevent tokens/timeout issues, while Rule pass covers the whole file.
     const AI_LIMIT = 50000; 
     const aiContent = content.length > AI_LIMIT ? content.substring(0, AI_LIMIT) : content;
     
@@ -99,7 +98,7 @@ const dataSieveFlow = ai.defineFlow(
         console.error("AI Sieve pass failed:", e);
     }
 
-    // Merge results and deduplicate by value
+    // Merge and deduplicate by value
     const merged = [...rulesResults, ...aiResults];
     const uniqueMap = new Map();
     merged.forEach(item => {

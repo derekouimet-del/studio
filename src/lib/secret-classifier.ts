@@ -1,5 +1,3 @@
-'use client';
-
 export type Severity = "info" | "low" | "medium" | "high" | "critical";
 
 export type Finding = {
@@ -58,7 +56,7 @@ const rules: Rule[] = [
     id: "aws-access-key",
     type: "AWS Access Key ID",
     category: "key",
-    severity: "high", // Base severity, upgraded to critical if secret is nearby
+    severity: "high",
     confidence: 0.95,
     pattern: /\b((?:AKIA|ASIA|AGPA|AIDA|AROA)[0-9A-Z]{16})\b/,
     reason: "AWS access key id format detected.",
@@ -68,11 +66,10 @@ const rules: Rule[] = [
     id: "aws-secret",
     type: "AWS Secret Access Key",
     category: "secret",
-    severity: "info", // Default to info, upgraded to critical in classifyText if paired
+    severity: "info",
     confidence: 0.8,
     pattern: /\b([A-Za-z0-9/+=]{40})\b/,
     predicate: (m, ctx) => {
-        // Broad check for AWS keywords to reduce random noise when no ID is present
         return /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? "");
     },
     reason: "Possible AWS secret format detected. Upgraded to CRITICAL if a matching Access Key ID is found.",
@@ -120,13 +117,11 @@ const rules: Rule[] = [
   },
 ];
 
-// -------------------- CLASSIFIER --------------------
-
 export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[] {
   let allFindings: Finding[] = [];
   const baseCtx: ClassifyContext = {
     ...ctx,
-    surroundingText: ctx.surroundingText ?? text.slice(0, 10000), // Larger context window for pair detection
+    surroundingText: ctx.surroundingText ?? text.slice(0, 10000),
   };
 
   for (const rule of rules) {
@@ -134,7 +129,6 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
     
     let m: RegExpExecArray | null;
     while ((m = pattern.exec(text))) {
-      // Create a local context window for the predicate
       const start = Math.max(0, m.index - 500);
       const end = Math.min(text.length, m.index + m[0].length + 500);
       const localCtx = { ...baseCtx, surroundingText: text.slice(start, end) };
@@ -147,7 +141,6 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
 
   const deduped = dedupeFindings(allFindings);
 
-  // --- AWS Pair Logic ---
   const hasAwsKeyId = deduped.some(f => f.type === "AWS Access Key ID");
   const hasAwsSecret = deduped.some(f => f.type === "AWS Secret Access Key");
   
