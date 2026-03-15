@@ -104,7 +104,7 @@ export function WebCrawlerClient() {
               value={targetUrl}
               onChange={(e) => setTargetUrl(e.target.value)}
               disabled={isCrawling}
-              onKeyDown={(e) => e.key === 'Enter' && handleCrawl()}
+              onKeyDown={(e) => e.key === 'Enter' && !isCrawling && handleCrawl()}
             />
             <Button onClick={handleCrawl} disabled={isCrawling}>
               {isCrawling ? (

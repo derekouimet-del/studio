@@ -70,10 +70,10 @@ const rules: Rule[] = [
     confidence: 0.8,
     pattern: /\b([A-Za-z0-9/+=]{40})\b/,
     predicate: (m, ctx) => {
-        // Broad look for context keywords
+        // Broad look for context keywords to verify it might be a secret
         return /aws|secret|access[-]?key|aws_secret_access_key/i.test(ctx.surroundingText ?? "");
     },
-    reason: "Possible AWS secret format detected. Upgraded to CRITICAL if a matching Access Key ID is found in the same content.",
+    reason: "Possible AWS secret format detected. Classified as INFO unless a matching Access Key ID is found in the same file.",
     tags: ["aws", "secret"],
   },
   {
@@ -126,12 +126,10 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
   };
 
   for (const rule of rules) {
-    // Create a new regex instance with global flag to find all matches
     const pattern = new RegExp(rule.pattern.source, rule.pattern.flags + (rule.pattern.flags.includes('g') ? '' : 'g'));
     
     let m: RegExpExecArray | null;
     while ((m = pattern.exec(text))) {
-      // Provide localized context for predicates
       const start = Math.max(0, m.index - 500);
       const end = Math.min(text.length, m.index + m[0].length + 500);
       const localCtx = { ...baseCtx, surroundingText: text.slice(start, end) };
@@ -145,7 +143,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
 
   const deduped = dedupeFindings(allFindings);
 
-  // AWS Pair Validation Logic
+  // AWS Pair Validation Logic (PRD Requirement)
   const hasAwsKeyId = deduped.some(f => f.type === "AWS Access Key ID");
   const hasAwsSecret = deduped.some(f => f.type === "AWS Secret Access Key");
   
@@ -161,7 +159,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
               return { 
                   ...f, 
                   severity: "info", 
-                  reason: "INFO: Possible token-like string. AWS Secret format found but no matching Access Key ID detected in this content." 
+                  reason: "INFO: Possible token-like string found. Classified as INFO because no matching Access Key ID was detected in this context." 
               };
           }
       }
@@ -169,7 +167,7 @@ export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[]
           return {
               ...f,
               severity: "critical",
-              reason: "CRITICAL: AWS Access Key ID found as part of a complete credential pair."
+              reason: "CRITICAL: AWS Access Key ID found as part of a verified credential pair."
           };
       }
       return f;
@@ -182,7 +180,7 @@ function makeFinding(rule: Rule, raw: string, ctx: ClassifyContext): Finding {
     category: rule.category,
     severity: rule.severity,
     confidence: rule.confidence,
-    value: raw, // Unredacted
+    value: raw, 
     reason: rule.reason,
     source: ctx.sourceId ?? ctx.url,
     evidence: ctx.surroundingText ? ctx.surroundingText.slice(0, 200) : undefined,
