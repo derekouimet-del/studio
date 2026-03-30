@@ -21,7 +21,8 @@ import {
   Filter,
   Library,
   Zap,
-  Search
+  Search,
+  Network,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -35,6 +36,7 @@ import { PenQuestLogo } from '@/components/icons';
 
 const navItems = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/recon-graph', icon: Network, label: 'Recon Graph' },
   { href: '/attack-surface', icon: Globe, label: 'Attack Surface' },
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },

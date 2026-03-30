@@ -19,9 +19,16 @@ import {
   DatabaseZap,
   ArrowRight,
   Search,
+  Network,
 } from 'lucide-react';
 
 const tools = [
+  {
+    href: '/recon-graph',
+    icon: Network,
+    label: 'Recon Graph',
+    description: 'Visualize target infrastructure, services, risks, and relationships in an interactive graph.',
+  },
   {
     href: '/attack-surface',
     icon: Globe,
