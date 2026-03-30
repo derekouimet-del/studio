@@ -1,7 +1,9 @@
 import { Header } from '@/components/layout/header';
 import { ReconGraphClient } from '@/components/recon-graph/recon-graph-client';
 
-export const metadata = {
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
   title: 'Recon Graph - PenQuest',
   description: 'Visualize target infrastructure, relationships, exposures, and findings in one interactive graph.',
 };
