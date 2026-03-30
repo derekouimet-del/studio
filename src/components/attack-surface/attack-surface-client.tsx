@@ -21,6 +21,7 @@ import {
 import { Globe, LoaderCircle, Server } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { attackSurfaceMapperAction } from '@/app/actions';
+import { useRecordActivity } from '@/lib/activity';
 
 type Result = {
   subdomain: string;
@@ -32,6 +33,7 @@ export function AttackSurfaceClient() {
   const [isScanning, setIsScanning] = useState(false);
   const [results, setResults] = useState<Result[]>([]);
   const { toast } = useToast();
+  const { record: recordActivity } = useRecordActivity('attack-surface');
 
   const handleScan = async () => {
     if (!targetDomain) {
@@ -48,6 +50,13 @@ export function AttackSurfaceClient() {
 
     if (response.success && response.data) {
       setResults(response.data.results);
+      
+      // Record activity for dashboard
+      recordActivity({
+        target: targetDomain,
+        summary: `${response.data.results.length} subdomains found`,
+      });
+      
       if (response.data.results.length === 0) {
         toast({
           title: 'No subdomains found',

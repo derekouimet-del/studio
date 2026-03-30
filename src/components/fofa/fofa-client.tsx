@@ -9,6 +9,7 @@ import { fofaSuggestionAction } from '@/app/actions';
 import { ChatBubble } from '@/components/agent/chat-bubble';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useRecordActivity } from '@/lib/activity';
 
 type Message = {
   role: 'user' | 'model';
@@ -36,6 +37,7 @@ export function FofaForgeClient() {
     },
   ]);
   const { toast } = useToast();
+  const { record: recordActivity } = useRecordActivity('fofa');
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -59,6 +61,14 @@ export function FofaForgeClient() {
         query: response.data.query
       };
       setMessages((prev) => [...prev, modelMessage]);
+      
+      // Record activity for dashboard if a query was generated
+      if (response.data.query) {
+        recordActivity({
+          target: input.slice(0, 50),
+          summary: response.data.query.slice(0, 40) + '...',
+        });
+      }
     } else {
       const errorMessage: Message = {
         role: 'model',

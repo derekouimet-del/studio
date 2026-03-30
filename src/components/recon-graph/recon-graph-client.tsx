@@ -67,6 +67,7 @@ import {
 
 import { ReconFlowGraph } from './recon-flow-graph';
 import { NodeDetailPanel } from './node-detail-panel';
+import { useRecordActivity } from '@/lib/activity';
 
 const DEFAULT_OPTIONS: ScanOptions = {
   resolveSubdomains: true,
@@ -85,6 +86,7 @@ export function ReconGraphClient() {
   const [result, setResult] = useState<ReconGraphResult | null>(null);
   const [selectedNode, setSelectedNode] = useState<ReconNode | null>(null);
   const { toast } = useToast();
+  const { record: recordActivity } = useRecordActivity('recon-graph');
 
   const handleScan = useCallback(async () => {
     const normalized = normalizeTarget(target);
@@ -136,6 +138,13 @@ export function ReconGraphClient() {
       setScanProgress(progressSteps);
 
       setResult(graphResult);
+      
+      // Record activity for dashboard
+      recordActivity({
+        target: normalized.sanitized,
+        summary: `${graphResult.summary.totalNodes} nodes, ${graphResult.summary.cves} CVEs`,
+      });
+      
       toast({
         title: 'Scan Complete',
         description: `Found ${graphResult.summary.totalNodes} nodes across ${graphResult.summary.subdomains} subdomains.`,
