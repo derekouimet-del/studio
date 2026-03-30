@@ -6,16 +6,58 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import type { ReconNode, NodeType, RiskLevel } from '@/lib/recon-graph/types';
-import { useState } from 'react';
+import type { FindingVerification } from '@/lib/validation/types';
+import { validateFinding } from '@/lib/validation';
+import { ValidationResult } from './validation-result';
+import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 interface NodeDetailPanelProps {
   node: ReconNode | null;
+  targetHost: string;
   onClose: () => void;
 }
 
-export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ node, targetHost, onClose }: NodeDetailPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [verification, setVerification] = useState<FindingVerification | null>(null);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleValidate = useCallback(async () => {
+    if (!node) return;
+    
+    setIsValidating(true);
+    setValidationError(null);
+    
+    try {
+      const result = await validateFinding(node, {
+        targetHost,
+        nodeType: node.type,
+        nodeId: node.id,
+        metadata: node.metadata,
+      });
+      setVerification(result);
+    } catch (err) {
+      setValidationError(err instanceof Error ? err.message : 'Validation failed. Please try again.');
+    } finally {
+      setIsValidating(false);
+    }
+  }, [node, targetHost]);
+
+  const handleRetry = useCallback(() => {
+    setValidationError(null);
+    handleValidate();
+  }, [handleValidate]);
+
+  // Reset validation state when node changes
+  const [prevNodeId, setPrevNodeId] = useState<string | null>(null);
+  if (node && node.id !== prevNodeId) {
+    setPrevNodeId(node.id);
+    setVerification(null);
+    setValidationError(null);
+    setIsValidating(false);
+  }
 
   if (!node) return null;
 
@@ -241,6 +283,16 @@ export function NodeDetailPanel({ node, onClose }: NodeDetailPanelProps) {
               </div>
             </>
           )}
+
+          {/* Validation Section */}
+          <Separator />
+          <ValidationResult
+            verification={verification}
+            isLoading={isValidating}
+            error={validationError}
+            onValidate={handleValidate}
+            onRetry={handleRetry}
+          />
 
           {/* Raw Data */}
           <Separator />

@@ -479,10 +479,11 @@ export function ReconGraphClient() {
                       onNodeClick={setSelectedNode}
                     />
                   </div>
-                  {selectedNode && (
-                    <NodeDetailPanel
-                      node={selectedNode}
-                      onClose={() => setSelectedNode(null)}
+{selectedNode && (
+<NodeDetailPanel
+node={selectedNode}
+targetHost={result?.target || target}
+onClose={() => setSelectedNode(null)}
                     />
                   )}
                 </div>
