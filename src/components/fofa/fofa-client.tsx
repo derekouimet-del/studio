@@ -33,7 +33,7 @@ export function FofaForgeClient() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      content: "Hi! I'm Nexus. I can help you build advanced FOFA search queries. Just tell me what you're looking for, like 'Find Apache servers in the UK with port 8080'.",
+      content: "Hi! I'm Nexus, your FOFA query expert. I can translate your search intent into precise FOFA syntax.\n\n**Try asking things like:**\n- \"Find exposed Jenkins servers in Germany\"\n- \"Search for login pages with valid SSL certificates\"\n- \"Find Redis databases on port 6379\"\n- \"Look for WordPress sites in the US\"\n- \"Find servers running nginx in the 192.168.1.0/24 range\"\n\nWhat would you like to search for?",
     },
   ]);
   const { toast } = useToast();
@@ -91,7 +91,7 @@ export function FofaForgeClient() {
     <Card className="flex flex-col h-[75vh]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Search className="text-primary"/> FofaForge Query Builder</CardTitle>
-        <CardDescription>Nexus will translate your search intent into specialized FOFA syntax. Use double-quotes for exact string matching in queries.</CardDescription>
+        <CardDescription>Nexus translates natural language into precise FOFA queries. Describe what you want to find and get syntactically correct queries ready to execute.</CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
         <ScrollArea className="flex-1 px-6 pb-4">
