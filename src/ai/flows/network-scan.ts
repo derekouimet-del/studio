@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview Network scan flow that connects to the self-hosted scanner service.
  */

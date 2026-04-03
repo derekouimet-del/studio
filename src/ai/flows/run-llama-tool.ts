@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A flow to proxy requests to a self-hosted Llama instance.
  */

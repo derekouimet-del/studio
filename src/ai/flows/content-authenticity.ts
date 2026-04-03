@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow for analyzing content to detect if it was AI-generated.
  *

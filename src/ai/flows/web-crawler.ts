@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow that functions as a web crawler and security scanner.
  * Now enhanced with a sophisticated rule-based secret classifier that returns full values.

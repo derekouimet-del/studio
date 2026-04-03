@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow that analyzes text content for sensitive data.
  * Enhanced with the high-performance rule-based secret classifier.

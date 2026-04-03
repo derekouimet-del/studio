@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow that discovers subdomains for a given domain.
  *

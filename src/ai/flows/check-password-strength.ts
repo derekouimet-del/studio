@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview This file defines a Genkit flow for checking password strength and similarity to breached passwords.
  *

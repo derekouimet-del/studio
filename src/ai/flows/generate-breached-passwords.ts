@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview This file defines a Genkit flow for generating plausible but FAKE breached passwords based on a topic.
  *

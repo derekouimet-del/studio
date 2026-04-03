@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow that suggests default credentials for a given product.
  *

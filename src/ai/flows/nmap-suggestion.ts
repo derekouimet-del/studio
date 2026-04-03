@@ -1,4 +1,3 @@
-'use server';
 /**
  * @fileOverview An AI assistant for generating nmap commands.
  *

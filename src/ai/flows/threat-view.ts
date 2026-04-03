@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * @fileOverview A Genkit flow that simulates a Shodan-like search for exposed services.
  *
