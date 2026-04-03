@@ -1,5 +1,3 @@
-'use server';
-
 import { assessVulnerability, type VulnerabilityAssessmentInput } from '@/ai/flows/vulnerability-assessment';
 import { suggestExploits, type ExploitSuggestionInput } from '@/ai/flows/exploit-suggestion';
 import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
@@ -21,6 +19,7 @@ import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-
 import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
+  'use server';
   try {
     const result = await assessVulnerability(input);
     return { success: true, data: result };
@@ -31,6 +30,7 @@ export async function assessVulnerabilityAction(input: VulnerabilityAssessmentIn
 }
 
 export async function suggestExploitsAction(input: ExploitSuggestionInput) {
+  'use server';
   try {
     const result = await suggestExploits(input);
     return { success: true, data: result };
@@ -41,6 +41,7 @@ export async function suggestExploitsAction(input: ExploitSuggestionInput) {
 }
 
 export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
+  'use server';
   try {
     const result = await crawlWebsite(input);
     return { success: true, data: result };
@@ -51,6 +52,7 @@ export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
 }
 
 export async function suggestWordlistAction(input: WordlistSuggestionInput) {
+  'use server';
   try {
     const result = await suggestWordlist(input);
     return { success: true, data: result };
@@ -61,6 +63,7 @@ export async function suggestWordlistAction(input: WordlistSuggestionInput) {
 }
 
 export async function agentChatAction(input: AgentChatInput) {
+  'use server';
   try {
     const result = await agentChat(input);
     return { success: true, data: result };
@@ -71,16 +74,18 @@ export async function agentChatAction(input: AgentChatInput) {
 }
 
 export async function nmapSuggestionAction(input: NmapSuggestionInput) {
-    try {
-        const result = await nmapSuggestion(input);
-        return { success: true, data: result };
-    } catch (error) {
-        console.error('Nmap suggestion failed:', error);
-        return { success: false, error: 'An error occurred while generating the nmap command.' };
-    }
+  'use server';
+  try {
+    const result = await nmapSuggestion(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('Nmap suggestion failed:', error);
+    return { success: false, error: 'An error occurred while generating the nmap command.' };
+  }
 }
 
 export async function generateBreachedPasswordsAction(input: GenerateBreachedPasswordsInput) {
+  'use server';
   try {
     const result = await generateBreachedPasswords(input);
     return { success: true, data: result };
@@ -91,6 +96,7 @@ export async function generateBreachedPasswordsAction(input: GenerateBreachedPas
 }
 
 export async function checkPasswordStrengthAction(input: CheckPasswordStrengthInput) {
+  'use server';
   try {
     const result = await checkPasswordStrength(input);
     return { success: true, data: result };
@@ -101,6 +107,7 @@ export async function checkPasswordStrengthAction(input: CheckPasswordStrengthIn
 }
 
 export async function analyzeContentAuthenticityAction(input: ContentAuthenticityInput) {
+  'use server';
   try {
     const result = await analyzeContentAuthenticity(input);
     return { success: true, data: result };
@@ -111,6 +118,7 @@ export async function analyzeContentAuthenticityAction(input: ContentAuthenticit
 }
 
 export async function runLlamaToolAction(input: LlamaToolInput): Promise<{ success: boolean; data?: LlamaToolOutput; error?: string }> {
+  'use server';
   try {
     const result = await runLlamaTool(input);
     if (!result.ok) {
@@ -124,6 +132,7 @@ export async function runLlamaToolAction(input: LlamaToolInput): Promise<{ succe
 }
 
 export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput) {
+  'use server';
   try {
     const result = await mapAttackSurface(input);
     return { success: true, data: result };
@@ -134,6 +143,7 @@ export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput)
 }
 
 export async function vulndbExplorerAction(input: VulnDBExplorerInput) {
+  'use server';
   try {
     const result = await vulndbExplorer(input);
     return { success: true, data: result };
@@ -144,6 +154,7 @@ export async function vulndbExplorerAction(input: VulnDBExplorerInput) {
 }
 
 export async function defaultPassAction(input: DefaultPassInput) {
+  'use server';
   try {
     const result = await defaultPass(input);
     return { success: true, data: result };
@@ -154,6 +165,7 @@ export async function defaultPassAction(input: DefaultPassInput) {
 }
 
 export async function textToSpeechAction(input: TextToSpeechInput) {
+  'use server';
   try {
     const result = await textToSpeech(input);
     return { success: true, data: result };
@@ -164,6 +176,7 @@ export async function textToSpeechAction(input: TextToSpeechInput) {
 }
 
 export async function threatViewAction(input: ThreatViewInput) {
+  'use server';
   try {
     const result = await threatView(input);
     return { success: true, data: result };
@@ -174,6 +187,7 @@ export async function threatViewAction(input: ThreatViewInput) {
 }
 
 export async function dataSieveAction(input: DataSieveInput) {
+  'use server';
   try {
     const result = await dataSieve(input);
     return { success: true, data: result };
@@ -184,6 +198,7 @@ export async function dataSieveAction(input: DataSieveInput) {
 }
 
 export async function networkScanAction(input: NetworkScanInput) {
+  'use server';
   try {
     const result = await networkScan(input);
     return { success: true, data: result };
@@ -194,6 +209,7 @@ export async function networkScanAction(input: NetworkScanInput) {
 }
 
 export async function cveMonitorAction(): Promise<{ success: boolean; data?: CVEMonitorOutput; error?: string }> {
+  'use server';
   try {
     const result = await getLatestVulnerabilities();
     return { success: true, data: result };
@@ -204,11 +220,12 @@ export async function cveMonitorAction(): Promise<{ success: boolean; data?: CVE
 }
 
 export async function fofaSuggestionAction(input: FofaSuggestionInput) {
-    try {
-        const result = await fofaSuggestion(input);
-        return { success: true, data: result };
-    } catch (error) {
-        console.error('FOFA suggestion failed:', error);
-        return { success: false, error: 'An error occurred while generating the FOFA query.' };
-    }
+  'use server';
+  try {
+    const result = await fofaSuggestion(input);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('FOFA suggestion failed:', error);
+    return { success: false, error: 'An error occurred while generating the FOFA query.' };
+  }
 }
