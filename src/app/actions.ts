@@ -1,25 +1,28 @@
 'use server';
 
-// Type-only imports (these are erased at compile time, so they're safe)
-import type { VulnerabilityAssessmentInput } from '@/ai/flows/vulnerability-assessment';
-import type { ExploitSuggestionInput } from '@/ai/flows/exploit-suggestion';
-import type { CrawlWebsiteInput } from '@/ai/flows/web-crawler';
-import type { WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
-import type { AgentChatInput } from '@/ai/flows/agent-chat';
-import type { NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
-import type { GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
-import type { CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
-import type { ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
-import type { LlamaToolInput, LlamaToolOutput } from '@/ai/flows/run-llama-tool';
-import type { AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
-import type { VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
-import type { DefaultPassInput } from '@/ai/flows/default-pass';
-import type { TextToSpeechInput } from '@/ai/flows/text-to-speech';
-import type { ThreatViewInput } from '@/ai/flows/threat-view';
-import type { DataSieveInput } from '@/ai/flows/data-sieve';
-import type { NetworkScanInput } from '@/ai/flows/network-scan';
-import type { CVEMonitorOutput } from '@/ai/flows/cve-monitor';
-import type { FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
+// Import types from a clean types file that has no runtime dependencies
+import type {
+  VulnerabilityAssessmentInput,
+  ExploitSuggestionInput,
+  CrawlWebsiteInput,
+  WordlistSuggestionInput,
+  AgentChatInput,
+  NmapSuggestionInput,
+  GenerateBreachedPasswordsInput,
+  CheckPasswordStrengthInput,
+  ContentAuthenticityInput,
+  LlamaToolInput,
+  LlamaToolOutput,
+  AttackSurfaceMapperInput,
+  VulnDBExplorerInput,
+  DefaultPassInput,
+  TextToSpeechInput,
+  ThreatViewInput,
+  DataSieveInput,
+  NetworkScanInput,
+  CVEMonitorOutput,
+  FofaSuggestionInput,
+} from '@/ai/types';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
