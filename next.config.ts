@@ -41,6 +41,19 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '20mb',
     },
   },
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Prevent webpack from bundling these packages on the server
+      config.externals = config.externals || [];
+      config.externals.push({
+        'genkit': 'commonjs genkit',
+        '@genkit-ai/core': 'commonjs @genkit-ai/core',
+        '@genkit-ai/googleai': 'commonjs @genkit-ai/googleai',
+        'express': 'commonjs express',
+      });
+    }
+    return config;
+  },
 };
 
 export default nextConfig;
