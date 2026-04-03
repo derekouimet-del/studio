@@ -24,9 +24,13 @@ type ActionName =
   | 'cveMonitor'
   | 'fofaSuggestion';
 
-// Use a function to get the module path to prevent webpack static analysis
-function getFlowPath(flowName: string): string {
-  return `@/ai/flows/${flowName}`;
+// Use a function to dynamically construct module paths to prevent webpack static analysis
+// This is necessary because webpack traces even dynamic imports with string literals
+async function loadFlow(flowName: string): Promise<Record<string, unknown>> {
+  // Use string concatenation to prevent webpack from analyzing the import path
+  const basePath = '../../../ai/flows/';
+  const modulePath = basePath + flowName;
+  return import(modulePath);
 }
 
 export async function POST(request: NextRequest) {
@@ -35,101 +39,101 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'assessVulnerability': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/vulnerability-assessment');
-        const result = await mod.assessVulnerability(input as Parameters<typeof mod.assessVulnerability>[0]);
+        const mod = await loadFlow('vulnerability-assessment') as { assessVulnerability: (input: unknown) => Promise<unknown> };
+        const result = await mod.assessVulnerability(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'suggestExploits': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/exploit-suggestion');
-        const result = await mod.suggestExploits(input as Parameters<typeof mod.suggestExploits>[0]);
+        const mod = await loadFlow('exploit-suggestion') as { suggestExploits: (input: unknown) => Promise<unknown> };
+        const result = await mod.suggestExploits(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'crawlWebsite': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/web-crawler');
-        const result = await mod.crawlWebsite(input as Parameters<typeof mod.crawlWebsite>[0]);
+        const mod = await loadFlow('web-crawler') as { crawlWebsite: (input: unknown) => Promise<unknown> };
+        const result = await mod.crawlWebsite(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'suggestWordlist': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/wordlist-suggestion');
-        const result = await mod.suggestWordlist(input as Parameters<typeof mod.suggestWordlist>[0]);
+        const mod = await loadFlow('wordlist-suggestion') as { suggestWordlist: (input: unknown) => Promise<unknown> };
+        const result = await mod.suggestWordlist(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'agentChat': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/agent-chat');
-        const result = await mod.agentChat(input as Parameters<typeof mod.agentChat>[0]);
+        const mod = await loadFlow('agent-chat') as { agentChat: (input: unknown) => Promise<unknown> };
+        const result = await mod.agentChat(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'nmapSuggestion': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/nmap-suggestion');
-        const result = await mod.nmapSuggestion(input as Parameters<typeof mod.nmapSuggestion>[0]);
+        const mod = await loadFlow('nmap-suggestion') as { nmapSuggestion: (input: unknown) => Promise<unknown> };
+        const result = await mod.nmapSuggestion(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'generateBreachedPasswords': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/generate-breached-passwords');
-        const result = await mod.generateBreachedPasswords(input as Parameters<typeof mod.generateBreachedPasswords>[0]);
+        const mod = await loadFlow('generate-breached-passwords') as { generateBreachedPasswords: (input: unknown) => Promise<unknown> };
+        const result = await mod.generateBreachedPasswords(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'checkPasswordStrength': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/check-password-strength');
-        const result = await mod.checkPasswordStrength(input as Parameters<typeof mod.checkPasswordStrength>[0]);
+        const mod = await loadFlow('check-password-strength') as { checkPasswordStrength: (input: unknown) => Promise<unknown> };
+        const result = await mod.checkPasswordStrength(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'analyzeContentAuthenticity': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/content-authenticity');
-        const result = await mod.analyzeContentAuthenticity(input as Parameters<typeof mod.analyzeContentAuthenticity>[0]);
+        const mod = await loadFlow('content-authenticity') as { analyzeContentAuthenticity: (input: unknown) => Promise<unknown> };
+        const result = await mod.analyzeContentAuthenticity(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'runLlamaTool': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/run-llama-tool');
-        const result = await mod.runLlamaTool(input as Parameters<typeof mod.runLlamaTool>[0]);
+        const mod = await loadFlow('run-llama-tool') as { runLlamaTool: (input: unknown) => Promise<{ ok: boolean; error?: string }> };
+        const result = await mod.runLlamaTool(input);
         if (!result.ok) {
           return NextResponse.json({ success: false, error: result.error || 'The Llama tool failed.' });
         }
         return NextResponse.json({ success: true, data: result });
       }
       case 'attackSurfaceMapper': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/attack-surface-mapper');
-        const result = await mod.mapAttackSurface(input as Parameters<typeof mod.mapAttackSurface>[0]);
+        const mod = await loadFlow('attack-surface-mapper') as { mapAttackSurface: (input: unknown) => Promise<unknown> };
+        const result = await mod.mapAttackSurface(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'vulndbExplorer': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/vulndb-explorer');
-        const result = await mod.vulndbExplorer(input as Parameters<typeof mod.vulndbExplorer>[0]);
+        const mod = await loadFlow('vulndb-explorer') as { vulndbExplorer: (input: unknown) => Promise<unknown> };
+        const result = await mod.vulndbExplorer(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'defaultPass': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/default-pass');
-        const result = await mod.defaultPass(input as Parameters<typeof mod.defaultPass>[0]);
+        const mod = await loadFlow('default-pass') as { defaultPass: (input: unknown) => Promise<unknown> };
+        const result = await mod.defaultPass(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'textToSpeech': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/text-to-speech');
-        const result = await mod.textToSpeech(input as Parameters<typeof mod.textToSpeech>[0]);
+        const mod = await loadFlow('text-to-speech') as { textToSpeech: (input: unknown) => Promise<unknown> };
+        const result = await mod.textToSpeech(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'threatView': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/threat-view');
-        const result = await mod.threatView(input as Parameters<typeof mod.threatView>[0]);
+        const mod = await loadFlow('threat-view') as { threatView: (input: unknown) => Promise<unknown> };
+        const result = await mod.threatView(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'dataSieve': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/data-sieve');
-        const result = await mod.dataSieve(input as Parameters<typeof mod.dataSieve>[0]);
+        const mod = await loadFlow('data-sieve') as { dataSieve: (input: unknown) => Promise<unknown> };
+        const result = await mod.dataSieve(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'networkScan': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/network-scan');
-        const result = await mod.networkScan(input as Parameters<typeof mod.networkScan>[0]);
+        const mod = await loadFlow('network-scan') as { networkScan: (input: unknown) => Promise<unknown> };
+        const result = await mod.networkScan(input);
         return NextResponse.json({ success: true, data: result });
       }
       case 'cveMonitor': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/cve-monitor');
+        const mod = await loadFlow('cve-monitor') as { getLatestVulnerabilities: () => Promise<unknown> };
         const result = await mod.getLatestVulnerabilities();
         return NextResponse.json({ success: true, data: result });
       }
       case 'fofaSuggestion': {
-        const mod = await import(/* webpackIgnore: true */ '@/ai/flows/fofa-suggestion');
-        const result = await mod.fofaSuggestion(input as Parameters<typeof mod.fofaSuggestion>[0]);
+        const mod = await loadFlow('fofa-suggestion') as { fofaSuggestion: (input: unknown) => Promise<unknown> };
+        const result = await mod.fofaSuggestion(input);
         return NextResponse.json({ success: true, data: result });
       }
       default:
