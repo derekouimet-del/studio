@@ -2,43 +2,35 @@
 
 /**
  * @fileOverview Network scan flow that connects to the self-hosted scanner service.
- *
- * - networkScan - A function that takes a target and scan options, returns open ports and services.
- * - NetworkScanInput - The input type for the function.
- * - NetworkScanOutput - The return type for the function.
  */
-
-import { z } from 'zod';
 
 // Scanner service URL - set this in your environment variables
 const SCANNER_API_URL = process.env.SCANNER_API_URL || process.env.NEXT_PUBLIC_SCANNER_API_URL;
 
-const PortScanResultSchema = z.object({
-  host: z.string().describe('The IP address of the scanned host.'),
-  port: z.number().describe('The port number.'),
-  service: z.string().describe('The service name running on the port.'),
-  version: z.string().describe('The version of the service.'),
-  status: z.enum(['Open', 'Closed', 'Filtered']).describe('The status of the port.'),
-});
-export type PortScanResult = z.infer<typeof PortScanResultSchema>;
+// Types defined inline to avoid exporting objects from 'use server' file
+export type PortScanResult = {
+  host: string;
+  port: number;
+  service: string;
+  version: string;
+  status: 'Open' | 'Closed' | 'Filtered';
+};
 
-export const NetworkScanInputSchema = z.object({
-  target: z.string().describe('The IP address, domain, or CIDR range to scan.'),
-  scanType: z.enum(['quick', 'standard', 'deep', 'stealth']).optional().default('standard'),
-  ports: z.string().optional().describe('Custom port range, e.g., "22,80,443" or "1-1000"'),
-  serviceDetection: z.boolean().optional().default(true),
-  osDetection: z.boolean().optional().default(false),
-  scriptScan: z.boolean().optional().default(false),
-});
-export type NetworkScanInput = z.infer<typeof NetworkScanInputSchema>;
+export type NetworkScanInput = {
+  target: string;
+  scanType?: 'quick' | 'standard' | 'deep' | 'stealth';
+  ports?: string;
+  serviceDetection?: boolean;
+  osDetection?: boolean;
+  scriptScan?: boolean;
+};
 
-const NetworkScanOutputSchema = z.object({
-  results: z.array(PortScanResultSchema).describe('A list of discovered open ports and services.'),
-  rawOutput: z.string().optional().describe('Raw nmap output'),
-  scanTime: z.number().optional().describe('Scan duration in seconds'),
-  command: z.string().optional().describe('The nmap command that was executed'),
-});
-export type NetworkScanOutput = z.infer<typeof NetworkScanOutputSchema>;
+export type NetworkScanOutput = {
+  results: PortScanResult[];
+  rawOutput?: string;
+  scanTime?: number;
+  command?: string;
+};
 
 export async function networkScan(input: NetworkScanInput): Promise<NetworkScanOutput> {
   const { target, scanType, ports, serviceDetection, osDetection, scriptScan } = input;
