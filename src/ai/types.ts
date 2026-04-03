@@ -46,15 +46,24 @@ export interface ExploitSuggestionOutput {
 
 // Web Crawler
 export interface CrawlWebsiteInput {
-  url: string;
-  depth?: number;
+  targetUrl: string;
 }
 
 export interface CrawlWebsiteOutput {
   pages: {
+    id: string;
     url: string;
+    statusCode: number;
     title: string;
-    secrets: string[];
+  }[];
+  credentials: {
+    id: string;
+    source: string;
+    type: string;
+    value: string;
+    severity?: 'info' | 'low' | 'medium' | 'high' | 'critical';
+    confidence?: number;
+    reason?: string;
   }[];
 }
 
@@ -102,13 +111,14 @@ export interface CheckPasswordStrengthOutput {
 
 // Content Authenticity
 export interface ContentAuthenticityInput {
-  content: string;
+  contentType: 'text' | 'image' | 'audio' | 'video';
+  textContent?: string;
+  fileDataUri?: string;
 }
 
 export interface ContentAuthenticityOutput {
-  isAuthentic: boolean;
-  confidence: number;
-  analysis: string;
+  aiLikelihood: number;
+  reasoning: string;
 }
 
 // Llama Tool
@@ -180,54 +190,73 @@ export interface ThreatViewInput {
 }
 
 export interface ThreatViewOutput {
-  threats: {
-    name: string;
-    type: string;
-    severity: string;
-    description: string;
+  results: {
+    ipAddress: string;
+    location: string;
+    banner: string;
+    notes: string;
   }[];
 }
 
 // Data Sieve
 export interface DataSieveInput {
-  fileContent: string;
-  fileName: string;
+  content: string;
 }
 
 export interface DataSieveOutput {
-  findings: {
+  foundData: {
+    id: string;
     type: string;
     value: string;
-    context: string;
+    context?: string;
+    severity?: 'info' | 'low' | 'medium' | 'high' | 'critical';
   }[];
 }
 
 // Network Scan
 export interface NetworkScanInput {
   target: string;
-  scanType?: string;
+  scanType?: 'quick' | 'standard' | 'deep' | 'stealth';
+  ports?: string;
+  serviceDetection?: boolean;
+  osDetection?: boolean;
+  scriptScan?: boolean;
 }
 
+export type PortScanResult = {
+  host: string;
+  port: number;
+  service: string;
+  version: string;
+  status: 'Open' | 'Closed' | 'Filtered';
+};
+
 export interface NetworkScanOutput {
-  hosts: {
-    ip: string;
-    hostname?: string;
-    ports: {
-      port: number;
-      state: string;
-      service: string;
-    }[];
-  }[];
+  results: PortScanResult[];
+  rawOutput?: string;
+  scanTime?: number;
+  command?: string;
 }
 
 // CVE Monitor
+export interface CVEItem {
+  id: string;
+  summary: string;
+  cvss: number | null;
+  severity: string | null;
+  published: string;
+  lastModified: string;
+  attackVector: string | null;
+  cweId: string | null;
+  references: string[];
+}
+
 export interface CVEMonitorOutput {
-  vulnerabilities: {
-    id: string;
-    description: string;
-    severity: string;
-    publishedDate: string;
-  }[];
+  vulnerabilities: CVEItem[];
+  aiSummary: string;
+  criticalCount: number;
+  highCount: number;
+  lastFetchTime: string;
 }
 
 // FOFA Suggestion

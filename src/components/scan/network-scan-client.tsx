@@ -42,7 +42,7 @@ import {
   Check
 } from 'lucide-react';
 import { networkScanAction } from '@/app/actions';
-import type { PortScanResult } from '@/ai/flows/network-scan';
+import type { PortScanResult } from '@/ai/types';
 import { useToast } from '@/hooks/use-toast';
 import { useRecordActivity } from '@/lib/activity';
 

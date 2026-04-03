@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { dataSieveAction } from '@/app/actions';
 import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert } from 'lucide-react';
-import type { DataSieveOutput } from '@/ai/flows/data-sieve';
+import type { DataSieveOutput } from '@/ai/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import {

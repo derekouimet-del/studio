@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoaderCircle, DatabaseZap, AlertTriangle, Shield, CheckCircle, Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { vulndbExplorerAction } from '@/app/actions';
-import { type VulnDBExplorerOutput } from '@/ai/flows/vulndb-explorer';
+import { type VulnDBExplorerOutput } from '@/ai/types';
 import { cn } from '@/lib/utils';
 
 type Vulnerability = VulnDBExplorerOutput['vulnerabilities'][0];

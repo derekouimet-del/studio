@@ -15,8 +15,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateBreachedPasswordsAction, checkPasswordStrengthAction } from '@/app/actions';
 import { LoaderCircle, Sparkles, AlertTriangle, Shield, KeyRound, Clipboard, Download } from 'lucide-react';
-import type { GenerateBreachedPasswordsOutput } from '@/ai/flows/generate-breached-passwords';
-import type { CheckPasswordStrengthOutput } from '@/ai/flows/check-password-strength';
+import type { GenerateBreachedPasswordsOutput, CheckPasswordStrengthOutput } from '@/ai/types';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 

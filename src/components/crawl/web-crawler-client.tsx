@@ -21,7 +21,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Bot, LoaderCircle, ShieldAlert, Link as LinkIcon, Clipboard } from 'lucide-react';
 import { crawlWebsiteAction } from '@/app/actions';
-import type { CrawlWebsiteOutput } from '@/ai/flows/web-crawler';
+import type { CrawlWebsiteOutput } from '@/ai/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 

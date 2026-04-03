@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeContentAuthenticityAction } from '@/app/actions';
 import { LoaderCircle, Fingerprint, UploadCloud, FileVideo, FileAudio, Type, FileImage } from 'lucide-react';
-import type { ContentAuthenticityOutput } from '@/ai/flows/content-authenticity';
+import type { ContentAuthenticityOutput } from '@/ai/types';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 

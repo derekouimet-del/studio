@@ -13,7 +13,7 @@ import {
 import { LoaderCircle, Search, MapPin, AlertTriangle, Server } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { threatViewAction } from '@/app/actions';
-import { type ThreatViewOutput } from '@/ai/flows/threat-view';
+import { type ThreatViewOutput } from '@/ai/types';
 
 type HostResult = ThreatViewOutput['results'][0];
 

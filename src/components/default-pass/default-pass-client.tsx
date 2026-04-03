@@ -21,7 +21,7 @@ import {
 import { LoaderCircle, Users, KeyRound } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { defaultPassAction } from '@/app/actions';
-import { type DefaultPassOutput } from '@/ai/flows/default-pass';
+import { type DefaultPassOutput } from '@/ai/types';
 
 type Credential = DefaultPassOutput['credentials'][0];
 
