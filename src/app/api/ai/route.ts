@@ -24,13 +24,12 @@ type ActionName =
   | 'cveMonitor'
   | 'fofaSuggestion';
 
-// Use a function to dynamically construct module paths to prevent webpack static analysis
-// This is necessary because webpack traces even dynamic imports with string literals
+// Use eval to completely bypass webpack's static analysis
+// This is the only reliable way to prevent webpack from tracing dynamic imports
 async function loadFlow(flowName: string): Promise<Record<string, unknown>> {
-  // Use string concatenation to prevent webpack from analyzing the import path
-  const basePath = '../../../ai/flows/';
-  const modulePath = basePath + flowName;
-  return import(modulePath);
+  // eslint-disable-next-line no-eval
+  const dynamicImport = eval('(path) => import(path)') as (path: string) => Promise<Record<string, unknown>>;
+  return dynamicImport(`@/ai/flows/${flowName}`);
 }
 
 export async function POST(request: NextRequest) {
