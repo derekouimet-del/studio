@@ -47,6 +47,7 @@ export interface ReconGraphResult {
   edges: ReconEdge[];
   overallRisk: RiskLevel;
   scanTimestamp: string;
+  isLiveData?: boolean;
 }
 
 export interface ScanOptions {

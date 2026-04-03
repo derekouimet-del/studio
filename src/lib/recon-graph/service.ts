@@ -1,5 +1,5 @@
 // Recon Graph Service Layer
-// This module provides mock data with a clean interface for future live integrations
+// Connects to self-hosted scanner service or falls back to demo mode
 
 import type {
   TargetType,
@@ -16,6 +16,9 @@ import type {
   CVEInfo,
   SSLInfo,
 } from './types';
+
+// Backend scanner URL - set via environment variable
+const SCANNER_API_URL = process.env.NEXT_PUBLIC_SCANNER_API_URL || process.env.SCANNER_API_URL;
 
 // ============================================================
 // Input Normalization
@@ -50,7 +53,138 @@ export function normalizeTarget(input: string): {
 }
 
 // ============================================================
-// Mock Data Generators
+// Backend API Integration
+// ============================================================
+
+interface BackendReconData {
+  target: string;
+  timestamp: string;
+  subdomains: Array<{
+    subdomain: string;
+    ips: string[];
+    status: string;
+    source?: string;
+    is_root?: boolean;
+  }>;
+  hosts: Array<{
+    hostname: string;
+    ip: string;
+    status: string;
+    latency?: string;
+    ports: Array<{
+      port: number;
+      protocol: string;
+      state: string;
+      service: string;
+      version?: string;
+      cves?: Array<{ id: string; cvss: number; description: string }>;
+    }>;
+    os?: string;
+  }>;
+  technologies: Array<{
+    name: string;
+    version?: string;
+    confidence: string;
+  }>;
+  cves: Array<{
+    id: string;
+    cvss: number;
+    description: string;
+    source?: string;
+  }>;
+  ssl_certs: Array<{
+    host: string;
+    valid: boolean;
+    issuer?: string;
+    subject?: string;
+    not_before?: string;
+    not_after?: string;
+    san?: string[];
+  }>;
+  summary: {
+    subdomains: number;
+    hosts: number;
+    open_ports: number;
+    technologies: number;
+    cves: number;
+    critical_cves: number;
+    high_cves: number;
+    ssl_certs: number;
+  };
+}
+
+async function callBackendRecon(
+  target: string,
+  mode: ScanMode,
+  options: ScanOptions
+): Promise<BackendReconData> {
+  if (!SCANNER_API_URL) {
+    throw new Error('Scanner service not configured');
+  }
+
+  const response = await fetch(`${SCANNER_API_URL}/recon`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      target,
+      mode,
+      options: {
+        subdomains: options.resolveSubdomains,
+        ports: options.checkPorts,
+        technologies: options.detectTechnologies,
+        cves: options.matchCVEs,
+        ssl: options.includeSSL,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Scanner error: ${error}`);
+  }
+
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || 'Scan failed');
+  }
+
+  return result.data;
+}
+
+async function callBackendValidate(
+  type: string,
+  target: string,
+  data: Record<string, unknown>
+): Promise<{
+  validated: boolean;
+  status: string;
+  confidence: number;
+  evidence: string[];
+  raw_output?: string;
+}> {
+  if (!SCANNER_API_URL) {
+    throw new Error('Scanner service not configured');
+  }
+
+  const response = await fetch(`${SCANNER_API_URL}/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, target, data }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Validation request failed');
+  }
+
+  const result = await response.json();
+  return result.data;
+}
+
+// Export for use in validation service
+export { callBackendValidate, SCANNER_API_URL };
+
+// ============================================================
+// Mock Data Generators (Fallback for Demo Mode)
 // ============================================================
 
 function generateId(): string {
@@ -70,116 +204,62 @@ const SUBDOMAIN_PREFIXES = [
   'cdn', 'assets', 'static', 'img', 'images', 'admin', 'portal',
   'vpn', 'remote', 'git', 'gitlab', 'jenkins', 'ci', 'build',
   'test', 'qa', 'uat', 'prod', 'app', 'mobile', 'docs', 'wiki',
-  'blog', 'shop', 'store', 'billing', 'support', 'help', 'status',
 ];
 
 const COMMON_PORTS: PortInfo[] = [
-  { port: 21, protocol: 'tcp', service: 'FTP', state: 'open' },
   { port: 22, protocol: 'tcp', service: 'SSH', version: 'OpenSSH 8.9', state: 'open' },
-  { port: 25, protocol: 'tcp', service: 'SMTP', state: 'open' },
-  { port: 53, protocol: 'udp', service: 'DNS', state: 'open' },
   { port: 80, protocol: 'tcp', service: 'HTTP', version: 'nginx/1.24.0', state: 'open' },
   { port: 443, protocol: 'tcp', service: 'HTTPS', version: 'nginx/1.24.0', state: 'open' },
   { port: 3306, protocol: 'tcp', service: 'MySQL', version: '8.0.35', state: 'open' },
   { port: 5432, protocol: 'tcp', service: 'PostgreSQL', version: '15.4', state: 'open' },
   { port: 6379, protocol: 'tcp', service: 'Redis', version: '7.2.3', state: 'open' },
   { port: 8080, protocol: 'tcp', service: 'HTTP-Proxy', state: 'open' },
-  { port: 8443, protocol: 'tcp', service: 'HTTPS-Alt', state: 'open' },
-  { port: 27017, protocol: 'tcp', service: 'MongoDB', version: '7.0.4', state: 'open' },
 ];
 
 const TECHNOLOGIES: TechnologyInfo[] = [
   { name: 'nginx', version: '1.24.0', category: 'Web Server', confidence: 95 },
-  { name: 'Apache', version: '2.4.58', category: 'Web Server', confidence: 90 },
-  { name: 'Node.js', version: '20.10.0', category: 'Runtime', confidence: 85 },
   { name: 'React', version: '18.2.0', category: 'Frontend Framework', confidence: 92 },
-  { name: 'Next.js', version: '14.0.4', category: 'Framework', confidence: 88 },
+  { name: 'Node.js', version: '20.10.0', category: 'Runtime', confidence: 85 },
   { name: 'WordPress', version: '6.4.2', category: 'CMS', confidence: 95 },
-  { name: 'PHP', version: '8.2.13', category: 'Language', confidence: 80 },
   { name: 'jQuery', version: '3.7.1', category: 'Library', confidence: 98 },
-  { name: 'Bootstrap', version: '5.3.2', category: 'CSS Framework', confidence: 90 },
   { name: 'Cloudflare', category: 'CDN/WAF', confidence: 99 },
-  { name: 'Docker', category: 'Container', confidence: 70 },
-  { name: 'Kubernetes', category: 'Orchestration', confidence: 60 },
 ];
 
 const MOCK_CVES: CVEInfo[] = [
-  { id: 'CVE-2024-21762', severity: 'critical', score: 9.8, summary: 'FortiOS SSL VPN out-of-bounds write vulnerability allowing RCE', affectedProduct: 'FortiOS' },
-  { id: 'CVE-2024-3400', severity: 'critical', score: 10.0, summary: 'PAN-OS command injection in GlobalProtect gateway', affectedProduct: 'PAN-OS' },
-  { id: 'CVE-2024-1709', severity: 'critical', score: 10.0, summary: 'ConnectWise ScreenConnect authentication bypass', affectedProduct: 'ScreenConnect' },
-  { id: 'CVE-2023-44487', severity: 'high', score: 7.5, summary: 'HTTP/2 Rapid Reset Attack (affects nginx, Apache)', affectedProduct: 'nginx' },
-  { id: 'CVE-2023-46747', severity: 'critical', score: 9.8, summary: 'F5 BIG-IP unauthenticated RCE via request smuggling', affectedProduct: 'BIG-IP' },
-  { id: 'CVE-2023-34362', severity: 'critical', score: 9.8, summary: 'MOVEit Transfer SQL injection leading to RCE', affectedProduct: 'MOVEit' },
+  { id: 'CVE-2024-21762', severity: 'critical', score: 9.8, summary: 'FortiOS SSL VPN out-of-bounds write vulnerability', affectedProduct: 'FortiOS' },
+  { id: 'CVE-2023-44487', severity: 'high', score: 7.5, summary: 'HTTP/2 Rapid Reset Attack', affectedProduct: 'nginx' },
   { id: 'CVE-2023-22515', severity: 'critical', score: 9.8, summary: 'Atlassian Confluence broken access control', affectedProduct: 'Confluence' },
-  { id: 'CVE-2023-4966', severity: 'critical', score: 9.4, summary: 'Citrix NetScaler session token leak (Citrix Bleed)', affectedProduct: 'NetScaler' },
-  { id: 'CVE-2023-36884', severity: 'high', score: 8.8, summary: 'Microsoft Office RCE via malicious documents', affectedProduct: 'Office' },
-  { id: 'CVE-2023-27350', severity: 'critical', score: 9.8, summary: 'PaperCut MF/NG authentication bypass and RCE', affectedProduct: 'PaperCut' },
 ];
 
-// ============================================================
-// Discovery Functions
-// ============================================================
-
-export async function discoverSubdomains(domain: string, mode: ScanMode): Promise<SubdomainInfo[]> {
-  // Simulate network delay
+async function generateMockSubdomains(domain: string, mode: ScanMode): Promise<SubdomainInfo[]> {
   await new Promise(resolve => setTimeout(resolve, randomInt(500, 1500)));
-  
   const count = mode === 'quick' ? randomInt(3, 6) : mode === 'standard' ? randomInt(6, 12) : randomInt(12, 20);
   const prefixes = [...SUBDOMAIN_PREFIXES].sort(() => Math.random() - 0.5).slice(0, count);
-  
   return prefixes.map(prefix => ({
     subdomain: `${prefix}.${domain}`,
     ip: `${randomInt(1, 255)}.${randomInt(1, 255)}.${randomInt(1, 255)}.${randomInt(1, 255)}`,
-    isLive: Math.random() > 0.1,
-  })).filter(s => s.isLive);
+    isLive: true,
+  }));
 }
 
-export async function resolveIPs(targets: string[]): Promise<Map<string, string>> {
-  await new Promise(resolve => setTimeout(resolve, randomInt(200, 600)));
-  
-  const results = new Map<string, string>();
-  for (const target of targets) {
-    results.set(target, `${randomInt(1, 255)}.${randomInt(1, 255)}.${randomInt(1, 255)}.${randomInt(1, 255)}`);
-  }
-  return results;
-}
-
-export async function scanPorts(ip: string, mode: ScanMode): Promise<PortInfo[]> {
+async function generateMockPorts(mode: ScanMode): Promise<PortInfo[]> {
   await new Promise(resolve => setTimeout(resolve, randomInt(300, 800)));
-  
-  const portCount = mode === 'quick' ? randomInt(2, 4) : mode === 'standard' ? randomInt(4, 7) : randomInt(6, 10);
-  return [...COMMON_PORTS].sort(() => Math.random() - 0.5).slice(0, portCount);
+  const count = mode === 'quick' ? randomInt(2, 4) : mode === 'standard' ? randomInt(4, 7) : randomInt(6, 10);
+  return [...COMMON_PORTS].sort(() => Math.random() - 0.5).slice(0, count);
 }
 
-export async function detectTechnologies(target: string): Promise<TechnologyInfo[]> {
+async function generateMockTechnologies(): Promise<TechnologyInfo[]> {
   await new Promise(resolve => setTimeout(resolve, randomInt(200, 500)));
-  
-  const count = randomInt(3, 7);
-  return [...TECHNOLOGIES].sort(() => Math.random() - 0.5).slice(0, count);
+  return [...TECHNOLOGIES].sort(() => Math.random() - 0.5).slice(0, randomInt(3, 6));
 }
 
-export async function matchCVEs(technologies: TechnologyInfo[], services: PortInfo[]): Promise<CVEInfo[]> {
+async function generateMockCVEs(): Promise<CVEInfo[]> {
   await new Promise(resolve => setTimeout(resolve, randomInt(300, 700)));
-  
-  // Match some CVEs based on detected tech/services
-  const matchedCVEs: CVEInfo[] = [];
-  const cvePool = [...MOCK_CVES];
-  
-  // Add 1-4 CVEs based on probability
-  const count = randomInt(1, 4);
-  for (let i = 0; i < count && cvePool.length > 0; i++) {
-    const idx = randomInt(0, cvePool.length - 1);
-    matchedCVEs.push(cvePool.splice(idx, 1)[0]);
-  }
-  
-  return matchedCVEs;
+  return [...MOCK_CVES].sort(() => Math.random() - 0.5).slice(0, randomInt(1, 3));
 }
 
-export async function getSSLInfo(domain: string): Promise<SSLInfo | null> {
+async function generateMockSSL(domain: string): Promise<SSLInfo | null> {
   await new Promise(resolve => setTimeout(resolve, randomInt(200, 400)));
-  
-  if (Math.random() > 0.8) return null; // 20% chance no SSL
-  
   const daysUntilExpiry = randomInt(-30, 365);
   const validFrom = new Date();
   validFrom.setDate(validFrom.getDate() - randomInt(30, 365));
@@ -187,10 +267,10 @@ export async function getSSLInfo(domain: string): Promise<SSLInfo | null> {
   validTo.setDate(validTo.getDate() + daysUntilExpiry);
   
   return {
-    issuer: randomPick(["Let's Encrypt", 'DigiCert', 'Comodo', 'GlobalSign', 'Sectigo']),
+    issuer: randomPick(["Let's Encrypt", 'DigiCert', 'Cloudflare', 'GlobalSign']),
     validFrom: validFrom.toISOString().split('T')[0],
     validTo: validTo.toISOString().split('T')[0],
-    algorithm: randomPick(['RSA-2048', 'RSA-4096', 'ECDSA-P256', 'ECDSA-P384']),
+    algorithm: randomPick(['RSA-2048', 'RSA-4096', 'ECDSA-P256']),
     isExpired: daysUntilExpiry < 0,
     daysUntilExpiry,
   };
@@ -203,7 +283,6 @@ export async function getSSLInfo(domain: string): Promise<SSLInfo | null> {
 function calculateRiskLevel(cves: CVEInfo[], ports: PortInfo[], ssl: SSLInfo | null): RiskLevel {
   let riskScore = 0;
   
-  // CVE-based risk
   for (const cve of cves) {
     if (cve.severity === 'critical') riskScore += 30;
     else if (cve.severity === 'high') riskScore += 20;
@@ -211,13 +290,11 @@ function calculateRiskLevel(cves: CVEInfo[], ports: PortInfo[], ssl: SSLInfo | n
     else riskScore += 5;
   }
   
-  // Dangerous open ports
-  const dangerousPorts = [21, 23, 3389, 1433, 3306, 5432, 27017, 6379];
+  const dangerousPorts = [6379, 27017, 9200, 11211, 3306, 5432, 1433];
   for (const port of ports) {
     if (dangerousPorts.includes(port.port)) riskScore += 10;
   }
   
-  // SSL issues
   if (!ssl) riskScore += 15;
   else if (ssl.isExpired) riskScore += 20;
   else if (ssl.daysUntilExpiry < 30) riskScore += 5;
@@ -240,6 +317,7 @@ export async function buildReconGraph(
 ): Promise<ReconGraphResult> {
   const nodes: ReconNode[] = [];
   const edges: ReconEdge[] = [];
+  let isLiveData = false;
   
   // Root node
   const rootId = `root-${generateId()}`;
@@ -255,171 +333,214 @@ export async function buildReconGraph(
   let allTechnologies: TechnologyInfo[] = [];
   let allCVEs: CVEInfo[] = [];
   let sslInfo: SSLInfo | null = null;
-  
-  // Phase 1: Subdomain Discovery
-  if ((targetType === 'domain' || targetType === 'subdomain') && options.resolveSubdomains) {
-    const baseDomain = targetType === 'subdomain' 
-      ? target.split('.').slice(-2).join('.') 
-      : target;
-    
-    allSubdomains = await discoverSubdomains(baseDomain, mode);
-    
-    for (const sub of allSubdomains) {
-      const subId = `subdomain-${generateId()}`;
-      nodes.push({
-        id: subId,
-        type: 'subdomain',
-        label: sub.subdomain,
-        metadata: { ip: sub.ip },
-      });
-      edges.push({
-        id: `edge-${generateId()}`,
-        source: rootId,
-        target: subId,
-        label: 'subdomain',
-      });
+
+  // Try backend scanner first
+  if (SCANNER_API_URL) {
+    try {
+      console.log('[v0] Attempting to connect to scanner service:', SCANNER_API_URL);
+      const backendData = await callBackendRecon(target, mode, options);
+      isLiveData = true;
+      console.log('[v0] Backend scan successful, processing results');
       
-      // Add IP node for each subdomain
-      const ipId = `ip-${generateId()}`;
-      nodes.push({
-        id: ipId,
-        type: 'ip',
-        label: sub.ip,
-      });
-      edges.push({
-        id: `edge-${generateId()}`,
-        source: subId,
-        target: ipId,
-        label: 'resolves',
-      });
-    }
-  }
-  
-  // Phase 2: Port Scanning
-  if (options.checkPorts) {
-    const ipsToScan = targetType === 'ip' 
-      ? [target] 
-      : allSubdomains.slice(0, mode === 'deep' ? 5 : 3).map(s => s.ip);
-    
-    for (const ip of ipsToScan) {
-      const ports = await scanPorts(ip, mode);
-      allPorts.push(...ports);
+      // Convert backend data to our internal format
+      allSubdomains = backendData.subdomains.map(s => ({
+        subdomain: s.subdomain,
+        ip: s.ips[0] || '',
+        isLive: s.status === 'active',
+      }));
       
-      // Find or create IP node
-      let ipNode = nodes.find(n => n.type === 'ip' && n.label === ip);
-      if (!ipNode) {
-        const ipId = `ip-${generateId()}`;
-        ipNode = { id: ipId, type: 'ip', label: ip };
-        nodes.push(ipNode);
-        edges.push({
-          id: `edge-${generateId()}`,
-          source: rootId,
-          target: ipId,
-          label: 'resolves',
-        });
-      }
-      
-      for (const port of ports) {
-        const serviceId = `service-${generateId()}`;
-        nodes.push({
-          id: serviceId,
-          type: 'service',
-          label: `${port.port}/${port.service}`,
-          metadata: { 
-            port: port.port, 
-            protocol: port.protocol, 
-            version: port.version,
-            state: port.state,
-          },
-        });
-        edges.push({
-          id: `edge-${generateId()}`,
-          source: ipNode.id,
-          target: serviceId,
-          label: 'port',
-        });
-      }
-    }
-  }
-  
-  // Phase 3: Technology Detection
-  if (options.detectTechnologies) {
-    allTechnologies = await detectTechnologies(target);
-    
-    for (const tech of allTechnologies) {
-      const techId = `tech-${generateId()}`;
-      nodes.push({
-        id: techId,
-        type: 'technology',
-        label: tech.version ? `${tech.name} ${tech.version}` : tech.name,
-        metadata: { category: tech.category, confidence: tech.confidence },
-      });
-      edges.push({
-        id: `edge-${generateId()}`,
-        source: rootId,
-        target: techId,
-        label: 'uses',
-      });
-    }
-  }
-  
-  // Phase 4: CVE Matching
-  if (options.matchCVEs && mode !== 'quick') {
-    allCVEs = await matchCVEs(allTechnologies, allPorts);
-    
-    for (const cve of allCVEs) {
-      const cveId = `cve-${generateId()}`;
-      nodes.push({
-        id: cveId,
-        type: 'cve',
-        label: cve.id,
-        riskLevel: cve.severity,
-        metadata: { score: cve.score, summary: cve.summary, affectedProduct: cve.affectedProduct },
-      });
-      
-      // Link CVE to related technology or root
-      const relatedTech = allTechnologies.find(t => 
-        cve.affectedProduct?.toLowerCase().includes(t.name.toLowerCase())
+      allPorts = backendData.hosts.flatMap(h => 
+        h.ports.filter(p => p.state === 'open').map(p => ({
+          port: p.port,
+          protocol: p.protocol as 'tcp' | 'udp',
+          service: p.service,
+          version: p.version,
+          state: p.state,
+        }))
       );
-      const techNode = relatedTech 
-        ? nodes.find(n => n.type === 'technology' && n.label.toLowerCase().includes(relatedTech.name.toLowerCase()))
-        : null;
       
-      edges.push({
-        id: `edge-${generateId()}`,
-        source: techNode?.id || rootId,
-        target: cveId,
-        label: 'vulnerable',
-      });
+      allTechnologies = backendData.technologies.map(t => ({
+        name: t.name,
+        version: t.version,
+        category: 'Detected',
+        confidence: t.confidence === 'high' ? 90 : t.confidence === 'medium' ? 70 : 50,
+      }));
+      
+      allCVEs = backendData.cves.map(c => ({
+        id: c.id,
+        severity: c.cvss >= 9 ? 'critical' : c.cvss >= 7 ? 'high' : c.cvss >= 4 ? 'medium' : 'low',
+        score: c.cvss,
+        summary: c.description,
+        affectedProduct: c.source,
+      }));
+      
+      if (backendData.ssl_certs.length > 0) {
+        const cert = backendData.ssl_certs[0];
+        const notAfter = cert.not_after ? new Date(cert.not_after) : new Date();
+        const daysUntilExpiry = Math.floor((notAfter.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        
+        sslInfo = {
+          issuer: cert.issuer || 'Unknown',
+          validFrom: cert.not_before || '',
+          validTo: cert.not_after || '',
+          algorithm: 'Unknown',
+          isExpired: daysUntilExpiry < 0,
+          daysUntilExpiry,
+        };
+      }
+    } catch (error) {
+      console.warn('[v0] Backend scanner unavailable, falling back to demo mode:', error);
     }
   }
-  
-  // Phase 5: SSL Info
-  if (options.includeSSL && targetType !== 'ip' && mode !== 'quick') {
-    sslInfo = await getSSLInfo(target);
+
+  // Fallback to mock data if backend unavailable
+  if (!isLiveData) {
+    console.log('[v0] Running in DEMO MODE - no scanner service configured');
     
-    if (sslInfo) {
-      const sslId = `ssl-${generateId()}`;
-      const sslRisk: RiskLevel = sslInfo.isExpired ? 'high' : sslInfo.daysUntilExpiry < 30 ? 'medium' : 'low';
-      nodes.push({
-        id: sslId,
-        type: 'ssl',
-        label: `SSL (${sslInfo.issuer})`,
-        riskLevel: sslRisk,
-        metadata: { ...sslInfo },
-      });
-      edges.push({
-        id: `edge-${generateId()}`,
-        source: rootId,
-        target: sslId,
-        label: 'certificate',
-      });
+    // Phase 1: Subdomain Discovery
+    if ((targetType === 'domain' || targetType === 'subdomain') && options.resolveSubdomains) {
+      const baseDomain = targetType === 'subdomain' 
+        ? target.split('.').slice(-2).join('.') 
+        : target;
+      allSubdomains = await generateMockSubdomains(baseDomain, mode);
+    }
+    
+    // Phase 2: Port Scanning
+    if (options.checkPorts) {
+      allPorts = await generateMockPorts(mode);
+    }
+    
+    // Phase 3: Technology Detection
+    if (options.detectTechnologies) {
+      allTechnologies = await generateMockTechnologies();
+    }
+    
+    // Phase 4: CVE Matching
+    if (options.matchCVEs && mode !== 'quick') {
+      allCVEs = await generateMockCVEs();
+    }
+    
+    // Phase 5: SSL Info
+    if (options.includeSSL && targetType !== 'ip' && mode !== 'quick') {
+      sslInfo = await generateMockSSL(target);
     }
   }
-  
-  // Add risk markers
+
+  // Build graph nodes and edges
+  for (const sub of allSubdomains) {
+    const subId = `subdomain-${generateId()}`;
+    nodes.push({
+      id: subId,
+      type: 'subdomain',
+      label: sub.subdomain,
+      metadata: { ip: sub.ip },
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: rootId,
+      target: subId,
+      label: 'subdomain',
+    });
+    
+    const ipId = `ip-${generateId()}`;
+    nodes.push({
+      id: ipId,
+      type: 'ip',
+      label: sub.ip,
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: subId,
+      target: ipId,
+      label: 'resolves',
+    });
+  }
+
+  // Add IP node for root if direct IP scan
+  if (targetType === 'ip') {
+    const ipId = `ip-${generateId()}`;
+    nodes.push({ id: ipId, type: 'ip', label: target });
+    edges.push({ id: `edge-${generateId()}`, source: rootId, target: ipId, label: 'resolves' });
+  }
+
+  // Service nodes
+  for (const port of allPorts) {
+    const serviceId = `service-${generateId()}`;
+    nodes.push({
+      id: serviceId,
+      type: 'service',
+      label: `${port.port}/${port.service}`,
+      metadata: { 
+        port: port.port, 
+        protocol: port.protocol, 
+        version: port.version,
+        state: port.state,
+      },
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: rootId,
+      target: serviceId,
+      label: 'port',
+    });
+  }
+
+  // Technology nodes
+  for (const tech of allTechnologies) {
+    const techId = `tech-${generateId()}`;
+    nodes.push({
+      id: techId,
+      type: 'technology',
+      label: tech.version ? `${tech.name} ${tech.version}` : tech.name,
+      metadata: { category: tech.category, confidence: tech.confidence, version: tech.version },
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: rootId,
+      target: techId,
+      label: 'uses',
+    });
+  }
+
+  // CVE nodes
+  for (const cve of allCVEs) {
+    const cveId = `cve-${generateId()}`;
+    nodes.push({
+      id: cveId,
+      type: 'cve',
+      label: cve.id,
+      riskLevel: cve.severity,
+      metadata: { score: cve.score, summary: cve.summary, affectedProduct: cve.affectedProduct },
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: rootId,
+      target: cveId,
+      label: 'vulnerable',
+    });
+  }
+
+  // SSL node
+  if (sslInfo) {
+    const sslId = `ssl-${generateId()}`;
+    const sslRisk: RiskLevel = sslInfo.isExpired ? 'high' : sslInfo.daysUntilExpiry < 30 ? 'medium' : 'low';
+    nodes.push({
+      id: sslId,
+      type: 'ssl',
+      label: `SSL (${sslInfo.issuer})`,
+      riskLevel: sslRisk,
+      metadata: { ...sslInfo },
+    });
+    edges.push({
+      id: `edge-${generateId()}`,
+      source: rootId,
+      target: sslId,
+      label: 'certificate',
+    });
+  }
+
+  // Risk node
   const overallRisk = calculateRiskLevel(allCVEs, allPorts, sslInfo);
-  
   if (overallRisk === 'critical' || overallRisk === 'high') {
     const riskId = `risk-${generateId()}`;
     nodes.push({
@@ -440,17 +561,16 @@ export async function buildReconGraph(
       label: 'assessment',
     });
   }
-  
-  // Build summary
+
   const summary: ReconSummary = {
     totalNodes: nodes.length,
     subdomains: nodes.filter(n => n.type === 'subdomain').length,
     ips: nodes.filter(n => n.type === 'ip').length,
     services: nodes.filter(n => n.type === 'service').length,
     cves: nodes.filter(n => n.type === 'cve').length,
-    risks: nodes.filter(n => n.type === 'risk').length + (overallRisk === 'high' || overallRisk === 'critical' ? 1 : 0),
+    risks: nodes.filter(n => n.type === 'risk').length,
   };
-  
+
   return {
     target,
     targetType,
@@ -460,6 +580,7 @@ export async function buildReconGraph(
     edges,
     overallRisk,
     scanTimestamp: new Date().toISOString(),
+    isLiveData,
   };
 }
 

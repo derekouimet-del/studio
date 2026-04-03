@@ -1,5 +1,5 @@
 // Finding Validation Service Layer
-// Mock implementations ready for real validation providers
+// Connects to backend scanner service or uses mock validation
 
 import type {
   FindingVerification,
@@ -12,8 +12,41 @@ import type {
 } from './types';
 import type { ReconNode } from '@/lib/recon-graph/types';
 
+// Backend scanner URL
+const SCANNER_API_URL = process.env.NEXT_PUBLIC_SCANNER_API_URL || process.env.SCANNER_API_URL;
+
 // Utility to simulate network delay
 const simulateDelay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Backend validation call
+async function callBackendValidation(
+  type: string,
+  target: string,
+  data: Record<string, unknown>
+): Promise<{
+  validated: boolean;
+  status: string;
+  confidence: number;
+  evidence: string[];
+  raw_output?: string;
+} | null> {
+  if (!SCANNER_API_URL) return null;
+  
+  try {
+    const response = await fetch(`${SCANNER_API_URL}/validate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, target, data }),
+    });
+    
+    if (!response.ok) return null;
+    
+    const result = await response.json();
+    return result.success ? result.data : null;
+  } catch {
+    return null;
+  }
+}
 
 // Dangerous services that should be flagged
 const DANGEROUS_SERVICES = ['redis', 'mongodb', 'elasticsearch', 'memcached', 'mysql', 'postgresql'];
@@ -315,10 +348,57 @@ export async function validateTlsConfig(input: SSLValidationInput): Promise<Find
 
 /**
  * Main validation function - routes to appropriate validator based on node type
+ * Tries backend scanner service first, falls back to mock validation
  */
 export async function validateFinding(node: ReconNode, context: ValidationContext): Promise<FindingVerification> {
   const { targetHost } = context;
+  const metadata = node.metadata || {};
   
+  // Try backend validation first
+  if (SCANNER_API_URL) {
+    try {
+      let validationType = node.type;
+      const validationData: Record<string, unknown> = { ...metadata };
+      
+      if (node.type === 'service') {
+        validationData.port = metadata.port;
+        validationData.service = node.label;
+      } else if (node.type === 'technology') {
+        validationData.name = node.label;
+      } else if (node.type === 'cve') {
+        validationData.id = node.label;
+      }
+      
+      const backendResult = await callBackendValidation(validationType, targetHost, validationData);
+      
+      if (backendResult) {
+        const statusMap: Record<string, FindingVerificationStatus> = {
+          'confirmed': 'confirmed',
+          'vulnerable': 'likely_vulnerable',
+          'likely_vulnerable': 'likely_vulnerable',
+          'not_found': 'false_positive_suspected',
+          'not_confirmed': 'needs_manual_review',
+          'invalid': 'needs_manual_review',
+        };
+        
+        return {
+          findingId: `${node.type}-${node.id}`,
+          status: statusMap[backendResult.status] || 'detected',
+          confidence: backendResult.confidence,
+          evidence: backendResult.evidence,
+          rationale: `Live validation performed against ${targetHost}. ${backendResult.evidence.join(' ')}`,
+          remediation: backendResult.status === 'confirmed' || backendResult.status === 'vulnerable' 
+            ? ['Address this confirmed finding promptly', 'Review related systems for similar issues']
+            : ['Manual verification recommended'],
+          checkedAt: new Date().toISOString(),
+        };
+      }
+    } catch (error) {
+      console.warn('[Validation] Backend unavailable, using mock validation');
+    }
+  }
+  
+  // Fallback to mock validation
   switch (node.type) {
     case 'service': {
       const metadata = node.metadata || {};

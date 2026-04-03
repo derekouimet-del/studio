@@ -145,10 +145,12 @@ export function ReconGraphClient() {
         summary: `${graphResult.summary.totalNodes} nodes, ${graphResult.summary.cves} CVEs`,
       });
       
-      toast({
-        title: 'Scan Complete',
-        description: `Found ${graphResult.summary.totalNodes} nodes across ${graphResult.summary.subdomains} subdomains.`,
-      });
+toast({
+  title: graphResult.isLiveData ? 'Live Scan Complete' : 'Demo Scan Complete',
+  description: graphResult.isLiveData 
+    ? `Found ${graphResult.summary.totalNodes} nodes across ${graphResult.summary.subdomains} subdomains.`
+    : `Demo mode: ${graphResult.summary.totalNodes} sample nodes. Set SCANNER_API_URL for live scans.`,
+  });
     } catch (error) {
       clearInterval(progressInterval);
       toast({
@@ -405,6 +407,28 @@ export function ReconGraphClient() {
       {/* Results */}
       {result && !isScanning && (
         <>
+          {/* Data Source Badge */}
+          <div className="flex items-center justify-between">
+            <Badge variant={result.isLiveData ? 'default' : 'secondary'} className="gap-1">
+              {result.isLiveData ? (
+                <>
+                  <span className="size-2 rounded-full bg-green-400 animate-pulse" />
+                  Live Data
+                </>
+              ) : (
+                <>
+                  <span className="size-2 rounded-full bg-yellow-400" />
+                  Demo Mode
+                </>
+              )}
+            </Badge>
+            {!result.isLiveData && (
+              <span className="text-xs text-muted-foreground">
+                Set NEXT_PUBLIC_SCANNER_API_URL for live scans
+              </span>
+            )}
+          </div>
+          
           {/* Summary Bar */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <Card>
