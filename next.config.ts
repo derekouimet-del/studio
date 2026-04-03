@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  serverExternalPackages: [
+    'genkit',
+    '@genkit-ai/core',
+    '@genkit-ai/googleai',
+    'express',
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '20mb',
