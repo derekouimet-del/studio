@@ -68,19 +68,30 @@ export async function networkScan(input: NetworkScanInput): Promise<NetworkScanO
     }
 
     // Transform backend response to expected format
-    const results: PortScanResult[] = (data.data?.results || []).map((r: Record<string, unknown>) => ({
-      host: String(r.host || target),
-      port: Number(r.port),
-      service: String(r.service || 'unknown'),
-      version: String(r.version || ''),
-      status: (r.status as 'Open' | 'Closed' | 'Filtered') || 'Open',
-    }));
+    // Backend returns: data.hosts[].ports[] - need to flatten to results[]
+    const results: PortScanResult[] = [];
+    const hosts = data.data?.hosts || [];
+    
+    for (const host of hosts) {
+      const hostIp = host.ip || host.hostname || target;
+      const ports = host.ports || [];
+      
+      for (const port of ports) {
+        results.push({
+          host: hostIp,
+          port: Number(port.port),
+          service: String(port.service || 'unknown'),
+          version: String(port.version || ''),
+          status: port.state === 'open' ? 'Open' : port.state === 'filtered' ? 'Filtered' : 'Closed',
+        });
+      }
+    }
 
     return {
       results,
-      rawOutput: data.data?.raw_output,
+      rawOutput: data.raw_output || data.data?.raw_output,
       scanTime: data.data?.scan_time,
-      command: data.data?.command,
+      command: data.command || data.data?.command,
     };
   } catch (error) {
     console.error('[NetworkScan] Error calling scanner service:', error);
