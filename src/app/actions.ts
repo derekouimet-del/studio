@@ -1,26 +1,29 @@
-import { assessVulnerability, type VulnerabilityAssessmentInput } from '@/ai/flows/vulnerability-assessment';
-import { suggestExploits, type ExploitSuggestionInput } from '@/ai/flows/exploit-suggestion';
-import { crawlWebsite, type CrawlWebsiteInput } from '@/ai/flows/web-crawler';
-import { suggestWordlist, type WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
-import { agentChat, type AgentChatInput } from '@/ai/flows/agent-chat';
-import { nmapSuggestion, type NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
-import { generateBreachedPasswords, type GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
-import { checkPasswordStrength, type CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
-import { analyzeContentAuthenticity, type ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
-import { runLlamaTool, type LlamaToolInput, type LlamaToolOutput } from '@/ai/flows/run-llama-tool';
-import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
-import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
-import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
-import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
-import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
-import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
-import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
-import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
-import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
+'use server';
+
+// Type-only imports (these are erased at compile time, so they're safe)
+import type { VulnerabilityAssessmentInput } from '@/ai/flows/vulnerability-assessment';
+import type { ExploitSuggestionInput } from '@/ai/flows/exploit-suggestion';
+import type { CrawlWebsiteInput } from '@/ai/flows/web-crawler';
+import type { WordlistSuggestionInput } from '@/ai/flows/wordlist-suggestion';
+import type { AgentChatInput } from '@/ai/flows/agent-chat';
+import type { NmapSuggestionInput } from '@/ai/flows/nmap-suggestion';
+import type { GenerateBreachedPasswordsInput } from '@/ai/flows/generate-breached-passwords';
+import type { CheckPasswordStrengthInput } from '@/ai/flows/check-password-strength';
+import type { ContentAuthenticityInput } from '@/ai/flows/content-authenticity';
+import type { LlamaToolInput, LlamaToolOutput } from '@/ai/flows/run-llama-tool';
+import type { AttackSurfaceMapperInput } from '@/ai/flows/attack-surface-mapper';
+import type { VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
+import type { DefaultPassInput } from '@/ai/flows/default-pass';
+import type { TextToSpeechInput } from '@/ai/flows/text-to-speech';
+import type { ThreatViewInput } from '@/ai/flows/threat-view';
+import type { DataSieveInput } from '@/ai/flows/data-sieve';
+import type { NetworkScanInput } from '@/ai/flows/network-scan';
+import type { CVEMonitorOutput } from '@/ai/flows/cve-monitor';
+import type { FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
-  'use server';
   try {
+    const { assessVulnerability } = await import('@/ai/flows/vulnerability-assessment');
     const result = await assessVulnerability(input);
     return { success: true, data: result };
   } catch (error) {
@@ -30,8 +33,8 @@ export async function assessVulnerabilityAction(input: VulnerabilityAssessmentIn
 }
 
 export async function suggestExploitsAction(input: ExploitSuggestionInput) {
-  'use server';
   try {
+    const { suggestExploits } = await import('@/ai/flows/exploit-suggestion');
     const result = await suggestExploits(input);
     return { success: true, data: result };
   } catch (error) {
@@ -41,8 +44,8 @@ export async function suggestExploitsAction(input: ExploitSuggestionInput) {
 }
 
 export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
-  'use server';
   try {
+    const { crawlWebsite } = await import('@/ai/flows/web-crawler');
     const result = await crawlWebsite(input);
     return { success: true, data: result };
   } catch (error) {
@@ -52,8 +55,8 @@ export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
 }
 
 export async function suggestWordlistAction(input: WordlistSuggestionInput) {
-  'use server';
   try {
+    const { suggestWordlist } = await import('@/ai/flows/wordlist-suggestion');
     const result = await suggestWordlist(input);
     return { success: true, data: result };
   } catch (error) {
@@ -63,8 +66,8 @@ export async function suggestWordlistAction(input: WordlistSuggestionInput) {
 }
 
 export async function agentChatAction(input: AgentChatInput) {
-  'use server';
   try {
+    const { agentChat } = await import('@/ai/flows/agent-chat');
     const result = await agentChat(input);
     return { success: true, data: result };
   } catch (error) {
@@ -74,8 +77,8 @@ export async function agentChatAction(input: AgentChatInput) {
 }
 
 export async function nmapSuggestionAction(input: NmapSuggestionInput) {
-  'use server';
   try {
+    const { nmapSuggestion } = await import('@/ai/flows/nmap-suggestion');
     const result = await nmapSuggestion(input);
     return { success: true, data: result };
   } catch (error) {
@@ -85,8 +88,8 @@ export async function nmapSuggestionAction(input: NmapSuggestionInput) {
 }
 
 export async function generateBreachedPasswordsAction(input: GenerateBreachedPasswordsInput) {
-  'use server';
   try {
+    const { generateBreachedPasswords } = await import('@/ai/flows/generate-breached-passwords');
     const result = await generateBreachedPasswords(input);
     return { success: true, data: result };
   } catch (error) {
@@ -96,8 +99,8 @@ export async function generateBreachedPasswordsAction(input: GenerateBreachedPas
 }
 
 export async function checkPasswordStrengthAction(input: CheckPasswordStrengthInput) {
-  'use server';
   try {
+    const { checkPasswordStrength } = await import('@/ai/flows/check-password-strength');
     const result = await checkPasswordStrength(input);
     return { success: true, data: result };
   } catch (error) {
@@ -107,8 +110,8 @@ export async function checkPasswordStrengthAction(input: CheckPasswordStrengthIn
 }
 
 export async function analyzeContentAuthenticityAction(input: ContentAuthenticityInput) {
-  'use server';
   try {
+    const { analyzeContentAuthenticity } = await import('@/ai/flows/content-authenticity');
     const result = await analyzeContentAuthenticity(input);
     return { success: true, data: result };
   } catch (error) {
@@ -118,22 +121,23 @@ export async function analyzeContentAuthenticityAction(input: ContentAuthenticit
 }
 
 export async function runLlamaToolAction(input: LlamaToolInput): Promise<{ success: boolean; data?: LlamaToolOutput; error?: string }> {
-  'use server';
   try {
+    const { runLlamaTool } = await import('@/ai/flows/run-llama-tool');
     const result = await runLlamaTool(input);
     if (!result.ok) {
       return { success: false, error: result.error || 'The Llama tool failed without a specific error message.' };
     }
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Llama tool action failed:', error);
-    return { success: false, error: error.message || 'An unexpected error occurred while running the Llama tool.' };
+    const message = error instanceof Error ? error.message : 'An unexpected error occurred while running the Llama tool.';
+    return { success: false, error: message };
   }
 }
 
 export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput) {
-  'use server';
   try {
+    const { mapAttackSurface } = await import('@/ai/flows/attack-surface-mapper');
     const result = await mapAttackSurface(input);
     return { success: true, data: result };
   } catch (error) {
@@ -143,8 +147,8 @@ export async function attackSurfaceMapperAction(input: AttackSurfaceMapperInput)
 }
 
 export async function vulndbExplorerAction(input: VulnDBExplorerInput) {
-  'use server';
   try {
+    const { vulndbExplorer } = await import('@/ai/flows/vulndb-explorer');
     const result = await vulndbExplorer(input);
     return { success: true, data: result };
   } catch (error) {
@@ -154,8 +158,8 @@ export async function vulndbExplorerAction(input: VulnDBExplorerInput) {
 }
 
 export async function defaultPassAction(input: DefaultPassInput) {
-  'use server';
   try {
+    const { defaultPass } = await import('@/ai/flows/default-pass');
     const result = await defaultPass(input);
     return { success: true, data: result };
   } catch (error) {
@@ -165,19 +169,20 @@ export async function defaultPassAction(input: DefaultPassInput) {
 }
 
 export async function textToSpeechAction(input: TextToSpeechInput) {
-  'use server';
   try {
+    const { textToSpeech } = await import('@/ai/flows/text-to-speech');
     const result = await textToSpeech(input);
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Text-to-speech failed:', error);
-    return { success: false, error: error.message || 'An error occurred during audio generation.' };
+    const message = error instanceof Error ? error.message : 'An error occurred during audio generation.';
+    return { success: false, error: message };
   }
 }
 
 export async function threatViewAction(input: ThreatViewInput) {
-  'use server';
   try {
+    const { threatView } = await import('@/ai/flows/threat-view');
     const result = await threatView(input);
     return { success: true, data: result };
   } catch (error) {
@@ -187,41 +192,44 @@ export async function threatViewAction(input: ThreatViewInput) {
 }
 
 export async function dataSieveAction(input: DataSieveInput) {
-  'use server';
   try {
+    const { dataSieve } = await import('@/ai/flows/data-sieve');
     const result = await dataSieve(input);
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('DataSieve analysis failed:', error);
-    return { success: false, error: error.message || 'An error occurred while analyzing the file.' };
+    const message = error instanceof Error ? error.message : 'An error occurred while analyzing the file.';
+    return { success: false, error: message };
   }
 }
 
 export async function networkScanAction(input: NetworkScanInput) {
-  'use server';
   try {
+    const { networkScan } = await import('@/ai/flows/network-scan');
     const result = await networkScan(input);
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Network scan failed:', error);
-    return { success: false, error: error.message || 'An error occurred during the network scan.' };
+    const message = error instanceof Error ? error.message : 'An error occurred during the network scan.';
+    return { success: false, error: message };
   }
 }
 
 export async function cveMonitorAction(): Promise<{ success: boolean; data?: CVEMonitorOutput; error?: string }> {
-  'use server';
   try {
+    const { getLatestVulnerabilities } = await import('@/ai/flows/cve-monitor');
     const result = await getLatestVulnerabilities();
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('CVE Monitor action failed:', error);
-    return { success: false, error: error.message || 'An error occurred while fetching the CVE feed.' };
+    const message = error instanceof Error ? error.message : 'An error occurred while fetching the CVE feed.';
+    return { success: false, error: message };
   }
 }
 
 export async function fofaSuggestionAction(input: FofaSuggestionInput) {
-  'use server';
   try {
+    const { fofaSuggestion } = await import('@/ai/flows/fofa-suggestion');
     const result = await fofaSuggestion(input);
     return { success: true, data: result };
   } catch (error) {
