@@ -492,6 +492,12 @@ def scan():
         scan_type = data.get('scan_type', 'quick')
         options = data.get('options', {})
         
+        # Support both nested options and flat structure from frontend
+        service_detection = data.get('service_detection', options.get('service_detection', False))
+        os_detection = data.get('os_detection', options.get('os_detection', False))
+        script_scan = data.get('script_scan', options.get('script_scan', False))
+        skip_ping = data.get('skip_ping', options.get('skip_ping', False))
+        
         cmd = ['nmap']
         
         if scan_type == 'quick':
@@ -507,11 +513,14 @@ def scan():
             cmd = [c for c in cmd if not c.startswith('-p') and c != '-F']
             cmd.extend(['-p', ports])
         
-        if options.get('service_detection'):
+        # Add scan options
+        if skip_ping:
+            cmd.append('-Pn')
+        if service_detection:
             cmd.append('-sV')
-        if options.get('os_detection'):
+        if os_detection:
             cmd.append('-O')
-        if options.get('script_scan'):
+        if script_scan:
             cmd.append('-sC')
         
         cmd.append(target)

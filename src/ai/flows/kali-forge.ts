@@ -54,6 +54,17 @@ export async function kaliForge(input: KaliForgeInput): Promise<KaliForgeOutput>
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[KaliForge] Scanner service error:', errorText);
+      
+      // 404 means the /kali endpoint doesn't exist on the backend yet
+      if (response.status === 404) {
+        return {
+          success: false,
+          command,
+          output: '',
+          error: 'The /kali endpoint is not available on your scanner service. Please update your penquest-scanner-service.py with the latest version from the repository and restart the service.',
+        };
+      }
+      
       throw new Error(`Scanner service returned ${response.status}: ${errorText}`);
     }
 

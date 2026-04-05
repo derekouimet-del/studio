@@ -23,6 +23,7 @@ export type NetworkScanInput = {
   serviceDetection?: boolean;
   osDetection?: boolean;
   scriptScan?: boolean;
+  skipPing?: boolean;
 };
 
 export type NetworkScanOutput = {
@@ -33,7 +34,7 @@ export type NetworkScanOutput = {
 };
 
 export async function networkScan(input: NetworkScanInput): Promise<NetworkScanOutput> {
-  const { target, scanType, ports, serviceDetection, osDetection, scriptScan } = input;
+  const { target, scanType, ports, serviceDetection, osDetection, scriptScan, skipPing } = input;
 
   // Check if scanner service is configured
   if (!SCANNER_API_URL) {
@@ -52,6 +53,7 @@ export async function networkScan(input: NetworkScanInput): Promise<NetworkScanO
         service_detection: serviceDetection ?? true,
         os_detection: osDetection ?? false,
         script_scan: scriptScan ?? false,
+        skip_ping: skipPing ?? false,
       }),
     });
 
