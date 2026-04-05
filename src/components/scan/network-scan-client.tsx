@@ -55,6 +55,7 @@ export function NetworkScanClient() {
   const [serviceDetection, setServiceDetection] = useState(true);
   const [osDetection, setOsDetection] = useState(false);
   const [scriptScan, setScriptScan] = useState(false);
+  const [skipPing, setSkipPing] = useState(false);
   
   const [isScanning, setIsScanning] = useState(false);
   const [results, setResults] = useState<PortScanResult[]>([]);
@@ -83,6 +84,7 @@ export function NetworkScanClient() {
       serviceDetection,
       osDetection,
       scriptScan,
+      skipPing,
     });
 
     if (response.success && response.data) {
@@ -234,6 +236,19 @@ export function NetworkScanClient() {
               <Label htmlFor="script-scan" className="cursor-pointer">
                 <Terminal className="inline size-4 mr-1 text-muted-foreground" />
                 Script Scan (-sC)
+              </Label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="skip-ping" 
+                checked={skipPing} 
+                onCheckedChange={setSkipPing}
+                disabled={isScanning}
+              />
+              <Label htmlFor="skip-ping" className="cursor-pointer">
+                <ShieldAlert className="inline size-4 mr-1 text-muted-foreground" />
+                Skip Host Discovery (-Pn)
               </Label>
             </div>
           </div>
