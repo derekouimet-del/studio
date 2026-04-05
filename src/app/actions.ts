@@ -19,6 +19,7 @@ import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
 import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
 import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
+import { kaliForge, type KaliForgeInput } from '@/ai/flows/kali-forge';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -211,4 +212,14 @@ export async function fofaSuggestionAction(input: FofaSuggestionInput) {
         console.error('FOFA suggestion failed:', error);
         return { success: false, error: 'An error occurred while generating the FOFA query.' };
     }
+}
+
+export async function kaliForgeAction(input: KaliForgeInput) {
+  try {
+    const result = await kaliForge(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Kali Forge execution failed:', error);
+    return { success: false, error: error.message || 'An error occurred while executing the command.' };
+  }
 }

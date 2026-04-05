@@ -887,6 +887,182 @@ def fingerprint():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# Allowed Kali tools for security (whitelist approach)
+ALLOWED_KALI_TOOLS = {
+    # Network scanning
+    'nmap', 'masscan', 'unicornscan', 'netdiscover', 'arp-scan',
+    # DNS tools
+    'dig', 'nslookup', 'host', 'dnsenum', 'dnsrecon', 'fierce',
+    # Web scanning
+    'nikto', 'dirb', 'gobuster', 'wfuzz', 'ffuf', 'whatweb', 'wafw00f',
+    # SSL/TLS
+    'sslscan', 'sslyze', 'testssl.sh',
+    # Information gathering
+    'whois', 'theHarvester', 'recon-ng', 'maltego', 'shodan',
+    'subfinder', 'amass', 'sublist3r', 'assetfinder',
+    # Vulnerability scanning
+    'searchsploit', 'nmap', 'openvas',
+    # Password/hash tools
+    'john', 'hashcat', 'hydra', 'medusa', 'ncrack', 'hashid', 'hash-identifier',
+    # Exploitation
+    'msfconsole', 'msfvenom', 'searchsploit',
+    # Wireless
+    'aircrack-ng', 'airodump-ng', 'aireplay-ng', 'wifite',
+    # Sniffing
+    'tcpdump', 'wireshark', 'tshark', 'ettercap',
+    # Web exploitation
+    'sqlmap', 'xsser', 'commix',
+    # Network utilities
+    'netcat', 'nc', 'ncat', 'socat', 'hping3', 'traceroute', 'ping',
+    'curl', 'wget',
+    # Enumeration
+    'enum4linux', 'smbclient', 'smbmap', 'rpcclient', 'ldapsearch',
+    'snmpwalk', 'onesixtyone',
+    # Misc
+    'exiftool', 'binwalk', 'strings', 'file', 'xxd', 'base64',
+    'cat', 'head', 'tail', 'grep', 'awk', 'sed', 'cut', 'sort', 'uniq',
+    'wc', 'ls', 'pwd', 'whoami', 'id', 'uname', 'hostname', 'date', 'echo',
+}
+
+# Blocked patterns for security
+BLOCKED_PATTERNS = [
+    'rm -rf', 'rm -f', 'mkfs', 'dd if=', ':(){', 'fork',
+    '> /dev/', '| bash', '| sh', 'wget | ', 'curl | ',
+    'chmod 777', 'chown', 'passwd', 'useradd', 'userdel',
+    'sudo', 'su ', 'doas',
+    '/etc/shadow', '/etc/passwd',
+    'nc -e', 'ncat -e', 'bash -i', 'python -c', 'perl -e', 'ruby -e',
+    'reverse', 'bind shell', 'meterpreter',
+    '$(', '`',  # Command substitution
+    '&&', '||', ';',  # Command chaining (allow only single commands)
+]
+
+
+def validate_kali_command(command: str) -> tuple[bool, str]:
+    """
+    Validate a Kali command for safety.
+    Returns (is_valid, error_message).
+    """
+    command = command.strip()
+    
+    if not command:
+        return False, "Command cannot be empty"
+    
+    # Check for blocked patterns
+    command_lower = command.lower()
+    for pattern in BLOCKED_PATTERNS:
+        if pattern.lower() in command_lower:
+            return False, f"Blocked pattern detected: {pattern}"
+    
+    # Extract the base command (first word)
+    parts = command.split()
+    base_cmd = parts[0].split('/')[-1]  # Handle full paths like /usr/bin/nmap
+    
+    # Check if command is in whitelist
+    if base_cmd not in ALLOWED_KALI_TOOLS:
+        return False, f"Tool '{base_cmd}' is not in the allowed list. Allowed tools include: nmap, nikto, gobuster, sqlmap, hydra, etc."
+    
+    return True, ""
+
+
+@app.route('/kali', methods=['POST'])
+@check_api_key
+@rate_limit
+def kali_forge():
+    """
+    Execute a Kali Linux command.
+    
+    POST body (JSON):
+    {
+        "command": "nmap -sV 192.168.1.1",
+        "timeout": 120  # Optional, defaults to 120 seconds
+    }
+    
+    Response:
+    {
+        "success": true,
+        "command": "nmap -sV 192.168.1.1",
+        "output": "...",
+        "exit_code": 0,
+        "execution_time": 5.23
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data or 'command' not in data:
+            return jsonify({"success": False, "error": "Missing 'command' in request body"}), 400
+        
+        command = data['command'].strip()
+        timeout = min(data.get('timeout', 120), 300)  # Max 5 minutes
+        
+        # Validate command
+        is_valid, error = validate_kali_command(command)
+        if not is_valid:
+            return jsonify({
+                "success": False,
+                "command": command,
+                "output": "",
+                "error": error
+            }), 400
+        
+        print(f"[Kali Forge] Executing: {command}")
+        start_time = time.time()
+        
+        # Execute the command
+        result = subprocess.run(
+            command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd='/tmp'  # Run in safe directory
+        )
+        
+        execution_time = time.time() - start_time
+        
+        # Combine stdout and stderr
+        output = result.stdout
+        if result.stderr:
+            if output:
+                output += "\n--- stderr ---\n"
+            output += result.stderr
+        
+        return jsonify({
+            "success": result.returncode == 0,
+            "command": command,
+            "output": output,
+            "exit_code": result.returncode,
+            "execution_time": round(execution_time, 3)
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            "success": False,
+            "command": data.get('command', ''),
+            "output": "",
+            "error": f"Command timed out after {timeout} seconds",
+            "exit_code": -1
+        }), 504
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "command": data.get('command', ''),
+            "output": "",
+            "error": f"Execution error: {str(e)}"
+        }), 500
+
+
+@app.route('/kali/tools', methods=['GET'])
+@check_api_key
+def kali_tools():
+    """List available Kali tools."""
+    return jsonify({
+        "success": True,
+        "tools": sorted(list(ALLOWED_KALI_TOOLS)),
+        "count": len(ALLOWED_KALI_TOOLS)
+    })
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PenQuest Scanner Service v2.0')
     parser.add_argument('--port', type=int, default=11435, help='Port to listen on (default: 11435)')
@@ -910,6 +1086,8 @@ if __name__ == '__main__':
     print(f"║    POST /subdomains    - Subdomain enumeration          ║")
     print(f"║    GET  /ssl/<host>    - SSL certificate info           ║")
     print(f"║    POST /fingerprint   - Technology fingerprinting      ║")
+    print(f"║    POST /kali          - Execute Kali commands          ║")
+    print(f"║    GET  /kali/tools    - List allowed tools             ║")
     print(f"╚══════════════════════════════════════════════════════════╝")
     print(f"")
     print(f"[PenQuest Scanner] Starting on http://{args.host}:{args.port}")

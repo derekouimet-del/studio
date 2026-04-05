@@ -41,6 +41,7 @@ const navItems = [
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/fofa', icon: Search, label: 'FofaForge' },
+  { href: '/kali-forge', icon: TerminalSquare, label: 'Kali Forge' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },
   { href: '/threat-view', icon: Radar, label: 'ThreatView' },
