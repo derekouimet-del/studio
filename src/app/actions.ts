@@ -20,6 +20,7 @@ import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
 import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
 import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
 import { kaliForge, type KaliForgeInput } from '@/ai/flows/kali-forge';
+import { portForwardTest, type PortForwardTestInput } from '@/ai/flows/port-forward-test';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -221,5 +222,15 @@ export async function kaliForgeAction(input: KaliForgeInput) {
   } catch (error: any) {
     console.error('Kali Forge execution failed:', error);
     return { success: false, error: error.message || 'An error occurred while executing the command.' };
+  }
+}
+
+export async function portForwardTestAction(input: PortForwardTestInput) {
+  try {
+    const result = await portForwardTest(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Port forward test failed:', error);
+    return { success: false, error: error.message || 'An error occurred while testing ports.' };
   }
 }
