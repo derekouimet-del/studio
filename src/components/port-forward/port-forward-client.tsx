@@ -71,6 +71,8 @@ export function PortForwardClient() {
   const { record: recordActivity } = useRecordActivity('port-forward');
 
   const handleTest = async () => {
+    console.log('[v0] Port forward test initiated with:', { host, ports, protocol, timeout, grabBanner });
+    
     if (!host) {
       toast({
         variant: 'destructive',
@@ -92,31 +94,43 @@ export function PortForwardClient() {
     setIsTesting(true);
     setResults(null);
 
-    const response = await portForwardTestAction({ 
-      host,
-      ports,
-      protocol,
-      timeout,
-      grabBanner,
-    });
+    try {
+      console.log('[v0] Calling portForwardTestAction...');
+      const response = await portForwardTestAction({ 
+        host,
+        ports,
+        protocol,
+        timeout,
+        grabBanner,
+      });
+      console.log('[v0] portForwardTestAction response:', response);
 
-    if (response.success && response.data) {
-      setResults(response.data);
-      
-      recordActivity({
-        target: host,
-        summary: `${response.data.summary.open} of ${response.data.summary.total} ports open`,
-      });
-      
-      toast({
-        title: 'Test Complete',
-        description: `Found ${response.data.summary.open} open ports out of ${response.data.summary.total} tested.`,
-      });
-    } else {
+      if (response.success && response.data) {
+        setResults(response.data);
+        
+        recordActivity({
+          target: host,
+          summary: `${response.data.summary.open} of ${response.data.summary.total} ports open`,
+        });
+        
+        toast({
+          title: 'Test Complete',
+          description: `Found ${response.data.summary.open} open ports out of ${response.data.summary.total} tested.`,
+        });
+      } else {
+        console.error('[v0] Port forward test failed:', response.error);
+        toast({
+          variant: 'destructive',
+          title: 'Test Failed',
+          description: response.error,
+        });
+      }
+    } catch (error) {
+      console.error('[v0] Unexpected error in handleTest:', error);
       toast({
         variant: 'destructive',
         title: 'Test Failed',
-        description: response.error,
+        description: 'An unexpected error occurred.',
       });
     }
 

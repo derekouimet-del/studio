@@ -34,6 +34,7 @@ export const TOOL_METADATA: Record<string, { name: string; icon: string }> = {
   'default-pass': { name: 'Default Pass', icon: 'Fingerprint' },
   'threat-view': { name: 'Threat View', icon: 'Radar' },
   'kali-forge': { name: 'Kali Forge', icon: 'TerminalSquare' },
+  'port-forward': { name: 'Port Forward Test', icon: 'ArrowRightLeft' },
 };
 
 export function getRecentActivities(): ToolActivity[] {
