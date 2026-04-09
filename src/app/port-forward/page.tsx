@@ -1,5 +1,11 @@
+import type { Metadata } from 'next';
 import { Header } from '@/components/layout/header';
 import { PortForwardClient } from '@/components/port-forward/port-forward-client';
+
+export const metadata: Metadata = {
+  title: 'Port Forward Tester | Pen-Quest',
+  description: 'Test if your port forwarding rules are working correctly from the internet.',
+};
 
 export default function PortForwardPage() {
   return (
