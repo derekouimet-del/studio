@@ -23,19 +23,21 @@ import { textToSpeechAction } from '@/app/actions';
 import { LoaderCircle, Wand2, AudioLines } from 'lucide-react';
 
 const voices = [
-  { id: 'Algenib', name: 'Algenib (Male, US)' },
-  { id: 'Achernar', name: 'Achernar (Female, US)' },
-  { id: 'Spica', name: 'Spica (Female, US)' },
-  { id: 'Antares', name: 'Antares (Male, US)' },
-  { id: 'Sirius', name: 'Sirius (Male, UK)' },
-  { id: 'Canopus', name: 'Canopus (Female, UK)' },
+  { id: 'algenib', name: 'Algenib' },
+  { id: 'achernar', name: 'Achernar' },
+  { id: 'aoede', name: 'Aoede' },
+  { id: 'charon', name: 'Charon' },
+  { id: 'fenrir', name: 'Fenrir' },
+  { id: 'kore', name: 'Kore' },
+  { id: 'puck', name: 'Puck' },
+  { id: 'zephyr', name: 'Zephyr' },
 ];
 
 export function VoiceWeaverClient() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [text, setText] = useState('Hello, world! This is a test of the text to speech engine.');
-  const [voice, setVoice] = useState('Algenib');
+  const [voice, setVoice] = useState('charon');
   const [audioDataUri, setAudioDataUri] = useState<string | null>(null);
 
   const handleGenerate = async () => {
