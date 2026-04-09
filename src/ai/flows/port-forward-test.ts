@@ -41,11 +41,13 @@ export type PortForwardTestOutput = {
 };
 
 export async function portForwardTest(input: PortForwardTestInput): Promise<PortForwardTestOutput> {
+  console.log('[v0] portForwardTest called with input:', JSON.stringify(input));
   const { host, ports, protocol = 'tcp', timeout = 5000, grabBanner = true } = input;
   const startTime = Date.now();
 
   // Parse ports string into array of port numbers
   const portList = parsePorts(ports);
+  console.log('[v0] Parsed ports:', portList);
   
   if (portList.length === 0) {
     throw new Error('No valid ports specified');
@@ -57,9 +59,12 @@ export async function portForwardTest(input: PortForwardTestInput): Promise<Port
 
   // Check if scanner service is configured
   if (!SCANNER_API_URL) {
-    console.warn('[PortForwardTest] SCANNER_API_URL not set, using mock data');
-    return generateMockResults(host, portList, protocol, startTime);
+    console.log('[v0] SCANNER_API_URL not set, generating mock results');
+    const mockResults = generateMockResults(host, portList, protocol, startTime);
+    console.log('[v0] Mock results generated:', JSON.stringify(mockResults));
+    return mockResults;
   }
+  console.log('[v0] SCANNER_API_URL is set:', SCANNER_API_URL);
 
   try {
     const response = await fetch(`${SCANNER_API_URL}/port-check`, {
