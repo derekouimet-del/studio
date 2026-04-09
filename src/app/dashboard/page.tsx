@@ -19,7 +19,7 @@ import {
   Network,
   ShieldAlert,
 } from 'lucide-react';
-import { RecentActivityCards } from '@/components/dashboard/recent-activity-cards';
+import { CVEStatsCards } from '@/components/dashboard/cve-stats-cards';
 
 const tools = [
   {
@@ -78,10 +78,10 @@ export default function DashboardPage() {
     <div className="flex flex-col w-full min-h-screen">
       <Header title="Dashboard" />
       <main className="flex-1 p-4 md:p-6 lg:p-8 grid gap-8">
-        {/* Recent Activity Section */}
+        {/* CVE Stats Section */}
         <div>
-          <h2 className="text-lg font-semibold tracking-tight mb-4 text-muted-foreground">Recent Activity</h2>
-          <RecentActivityCards />
+          <h2 className="text-lg font-semibold tracking-tight mb-4 text-muted-foreground">Threat Intelligence</h2>
+          <CVEStatsCards />
         </div>
         
         {/* Tool Arsenal Section */}
