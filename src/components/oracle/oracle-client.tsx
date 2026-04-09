@@ -33,12 +33,14 @@ interface Message {
 const SYSTEM_PROMPT = 'You are a helpful assistant. Be concise, clear, and practical.';
 
 const voices = [
-  { id: 'Algenib', name: 'Algenib (Male, US)' },
-  { id: 'Achernar', name: 'Achernar (Female, US)' },
-  { id: 'Spica', name: 'Spica (Female, US)' },
-  { id: 'Antares', name: 'Antares (Male, US)' },
-  { id: 'Sirius', name: 'Sirius (Male, UK)' },
-  { id: 'Canopus', name: 'Canopus (Female, UK)' },
+  { id: 'algenib', name: 'Algenib' },
+  { id: 'achernar', name: 'Achernar' },
+  { id: 'aoede', name: 'Aoede' },
+  { id: 'charon', name: 'Charon' },
+  { id: 'fenrir', name: 'Fenrir' },
+  { id: 'kore', name: 'Kore' },
+  { id: 'puck', name: 'Puck' },
+  { id: 'zephyr', name: 'Zephyr' },
 ];
 
 export function OracleClient() {
@@ -50,7 +52,7 @@ export function OracleClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState('Algenib');
+  const [selectedVoice, setSelectedVoice] = useState('charon');
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
   const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
