@@ -21,6 +21,7 @@ import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-
 import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
 import { kaliForge, type KaliForgeInput } from '@/ai/flows/kali-forge';
 import { portForwardTest, type PortForwardTestInput } from '@/ai/flows/port-forward-test';
+import { oracle, type OracleInput } from '@/ai/flows/oracle';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -234,5 +235,15 @@ export async function portForwardTestAction(input: PortForwardTestInput) {
   } catch (error: any) {
     console.error('[v0] Port forward test failed:', error);
     return { success: false, error: error.message || 'An error occurred while testing ports.' };
+  }
+}
+
+export async function oracleAction(input: OracleInput) {
+  try {
+    const result = await oracle(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Oracle action failed:', error);
+    return { success: false, error: error.message || 'An error occurred while communicating with Oracle.' };
   }
 }

@@ -24,6 +24,7 @@ import {
   Search,
   Network,
   ArrowRightLeft,
+  Sparkles,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -55,6 +56,7 @@ const navItems = [
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
   { href: '/voiceweaver', icon: AudioLines, label: 'Voice Weaver' },
+  { href: '/oracle', icon: Sparkles, label: 'Oracle' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
   { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
