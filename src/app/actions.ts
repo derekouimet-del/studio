@@ -226,11 +226,13 @@ export async function kaliForgeAction(input: KaliForgeInput) {
 }
 
 export async function portForwardTestAction(input: PortForwardTestInput) {
+  console.log('[v0] portForwardTestAction called with:', JSON.stringify(input));
   try {
     const result = await portForwardTest(input);
+    console.log('[v0] portForwardTestAction result:', JSON.stringify(result));
     return { success: true, data: result };
   } catch (error: any) {
-    console.error('Port forward test failed:', error);
+    console.error('[v0] Port forward test failed:', error);
     return { success: false, error: error.message || 'An error occurred while testing ports.' };
   }
 }
