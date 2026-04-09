@@ -30,14 +30,14 @@ export async function oracle(input: OracleInput): Promise<OracleOutput> {
     throw new Error('HF_TOKEN environment variable is not set.');
   }
 
-  const response = await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions', {
+  const response = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${HF_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'mistralai/Mistral-7B-Instruct-v0.3',
+      model: 'meta-llama/llama-3.1-8b-instruct',
       messages: input.messages,
       max_tokens: 1024,
     }),
