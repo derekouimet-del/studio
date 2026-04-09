@@ -23,6 +23,7 @@ import {
   Zap,
   Search,
   Network,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -39,6 +40,7 @@ const navItems = [
   { href: '/recon-graph', icon: Network, label: 'Recon Graph' },
   { href: '/attack-surface', icon: Globe, label: 'Attack Surface' },
   { href: '/scan', icon: ScanLine, label: 'Network Scan' },
+  { href: '/port-forward', icon: ArrowRightLeft, label: 'Port Forward Test' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/fofa', icon: Search, label: 'FofaForge' },
   { href: '/kali-forge', icon: TerminalSquare, label: 'Kali Forge' },
