@@ -44,14 +44,15 @@ export async function coder(input: CoderInput): Promise<CoderOutput> {
   }
 
   try {
-    const response = await fetch('https://router.huggingface.co/novita/v3/openai/chat/completions', {
+    // Use Hugging Face Inference API directly
+    const response = await fetch('https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${HF_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct',
+        model: 'Qwen/Qwen2.5-Coder-32B-Instruct',
         messages: [
           {
             role: 'system',
