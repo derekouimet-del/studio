@@ -25,6 +25,7 @@ import {
   Network,
   ArrowRightLeft,
   Sparkles,
+  Code2,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,6 +58,7 @@ const navItems = [
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
   { href: '/voiceweaver', icon: AudioLines, label: 'Voice Weaver' },
   { href: '/oracle', icon: Sparkles, label: 'Oracle' },
+  { href: '/coder', icon: Code2, label: 'Coder' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
   { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
