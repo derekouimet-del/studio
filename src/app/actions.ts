@@ -22,6 +22,7 @@ import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-sugges
 import { kaliForge, type KaliForgeInput } from '@/ai/flows/kali-forge';
 import { portForwardTest, type PortForwardTestInput } from '@/ai/flows/port-forward-test';
 import { oracle, type OracleInput } from '@/ai/flows/oracle';
+import { coder, type CoderInput } from '@/ai/flows/coder';
 
 export async function assessVulnerabilityAction(input: VulnerabilityAssessmentInput) {
   try {
@@ -245,5 +246,15 @@ export async function oracleAction(input: OracleInput) {
   } catch (error: any) {
     console.error('Oracle action failed:', error);
     return { success: false, error: error.message || 'An error occurred while communicating with Oracle.' };
+  }
+}
+
+export async function coderAction(input: CoderInput) {
+  try {
+    const result = await coder(input);
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Coder action failed:', error);
+    return { success: false, error: error.message || 'An error occurred while generating code.' };
   }
 }
