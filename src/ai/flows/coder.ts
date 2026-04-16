@@ -2,8 +2,10 @@
 
 /**
  * @fileOverview Coder flow that connects to Hugging Face's Qwen3-Coder model
- * to generate code based on user descriptions.
+ * via the Novita provider to generate code based on user descriptions.
  */
+
+import { InferenceClient } from '@huggingface/inference';
 
 export type CoderInput = {
   prompt: string;
@@ -44,58 +46,29 @@ export async function coder(input: CoderInput): Promise<CoderOutput> {
   }
 
   try {
-    // Use Hugging Face Serverless Inference API (OpenAI-compatible endpoint)
-    const response = await fetch('https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${HF_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'Qwen/Qwen2.5-Coder-32B-Instruct',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert coding assistant. Provide clean, well-documented, production-ready code. Include comments explaining key sections. If the request is ambiguous, make reasonable assumptions and note them in comments.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: maxTokens,
-        temperature,
-      }),
+    // Use Hugging Face Inference Client with Novita provider (matching original Python code)
+    const client = new InferenceClient({
+      provider: 'novita',
+      apiKey: HF_TOKEN,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Coder] API error:', response.status, errorText);
-      
-      if (response.status === 401) {
-        return {
-          success: false,
-          prompt,
-          code: '',
-          error: 'Invalid HF_TOKEN. Please check your Hugging Face API token.',
-        };
-      }
-      
-      if (response.status === 429) {
-        return {
-          success: false,
-          prompt,
-          code: '',
-          error: 'Rate limit exceeded. Please try again later.',
-        };
-      }
+    const response = await client.chatCompletion({
+      model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert coding assistant. Provide clean, well-documented, production-ready code. Include comments explaining key sections. If the request is ambiguous, make reasonable assumptions and note them in comments.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      max_tokens: maxTokens,
+      temperature,
+    });
 
-      throw new Error(`API returned ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-    
-    const generatedCode = data.choices?.[0]?.message?.content || '';
+    const generatedCode = response.choices?.[0]?.message?.content || '';
 
     if (!generatedCode) {
       return {
@@ -114,11 +87,32 @@ export async function coder(input: CoderInput): Promise<CoderOutput> {
   } catch (error) {
     console.error('[Coder] Error calling Hugging Face API:', error);
 
+    // Provide more helpful error messages
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+    
+    if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+      return {
+        success: false,
+        prompt,
+        code: '',
+        error: 'Invalid HF_TOKEN. Please check your Hugging Face API token.',
+      };
+    }
+    
+    if (errorMessage.includes('429') || errorMessage.includes('rate')) {
+      return {
+        success: false,
+        prompt,
+        code: '',
+        error: 'Rate limit exceeded. Please try again later.',
+      };
+    }
+
     return {
       success: false,
       prompt,
       code: '',
-      error: error instanceof Error ? error.message : 'An unexpected error occurred',
+      error: errorMessage,
     };
   }
 }
