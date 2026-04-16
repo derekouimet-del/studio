@@ -44,8 +44,8 @@ export async function coder(input: CoderInput): Promise<CoderOutput> {
   }
 
   try {
-    // Use Hugging Face Inference API directly
-    const response = await fetch('https://api-inference.huggingface.co/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions', {
+    // Use Hugging Face Serverless Inference API (OpenAI-compatible endpoint)
+    const response = await fetch('https://router.huggingface.co/hf-inference/models/Qwen/Qwen2.5-Coder-32B-Instruct/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${HF_TOKEN}`,
