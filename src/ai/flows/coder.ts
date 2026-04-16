@@ -47,13 +47,11 @@ export async function coder(input: CoderInput): Promise<CoderOutput> {
 
   try {
     // Use Hugging Face Inference Client with Novita provider (matching original Python code)
-    const client = new InferenceClient({
-      provider: 'novita',
-      apiKey: HF_TOKEN,
-    });
+    const client = new InferenceClient(HF_TOKEN);
 
     const response = await client.chatCompletion({
       model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct',
+      provider: 'novita',
       messages: [
         {
           role: 'system',
