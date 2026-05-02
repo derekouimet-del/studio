@@ -12,7 +12,7 @@ import '@/ai/flows/check-password-strength.ts';
 import '@/ai/flows/content-authenticity.ts';
 import '@/ai/flows/run-llama-tool.ts';
 import '@/ai/flows/attack-surface-mapper.ts';
-import '@/ai/flows/vulndb-explorer.ts';
+// vulndb-explorer.ts migrated to AI SDK - no longer uses Genkit
 import '@/ai/flows/default-pass.ts';
 import '@/ai/flows/text-to-speech.ts';
 import '@/ai/flows/threat-view.ts';
