@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const CheckPasswordStrengthInputSchema = z.object({
   password: z.string().describe('The password to analyze.'),

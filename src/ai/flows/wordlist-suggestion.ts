@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const WordlistSuggestionInputSchema = z.object({
   topic: z.string().describe('A topic or theme to base wordlist suggestions on (e.g., a company name, a person\'s interests, a technology).'),

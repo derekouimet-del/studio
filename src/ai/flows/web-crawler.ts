@@ -10,7 +10,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 import { classifyText } from '@/lib/secret-classifier';
 
 const PageResultSchema = z.object({

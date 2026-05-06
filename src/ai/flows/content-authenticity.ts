@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const ContentAuthenticityInputSchema = z.object({
   contentType: z.enum(['text', 'image', 'audio', 'video']),

@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const DefaultPassInputSchema = z.object({
   product: z.string().describe('The product, vendor, or device name to search for (e.g., Cisco, Linksys Router, Hikvision Camera).'),

@@ -9,7 +9,7 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { z } from 'zod';
 
 const ThreatViewInputSchema = z.object({
   query: z.string().describe('The search query, which can be a service name, port number, or product.'),

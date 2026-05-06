@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const GenerateBreachedPasswordsInputSchema = z.object({
   topic: z.string().describe('A topic or theme to base password generation on (e.g., a company name, a hobby, a movie).'),
