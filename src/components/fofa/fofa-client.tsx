@@ -4,17 +4,44 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, LoaderCircle, Search, Copy, Check, ExternalLink } from 'lucide-react';
+import { Send, LoaderCircle, Search, Copy, Check, ExternalLink, Play, Download, FileJson, FileSpreadsheet, ChevronDown, ChevronUp, Globe, Server, MapPin, Building } from 'lucide-react';
 import { fofaSuggestionAction } from '@/app/actions';
 import { ChatBubble } from '@/components/agent/chat-bubble';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { useRecordActivity } from '@/lib/activity';
+
+interface FofaSearchResult {
+  host: string;
+  ip: string;
+  port: string;
+  protocol: string;
+  country: string;
+  country_name: string;
+  region: string;
+  city: string;
+  as_organization: string;
+  title: string;
+  domain: string;
+  server: string;
+}
+
+interface FofaSearchData {
+  total: number;
+  page: number;
+  results: FofaSearchResult[];
+  query: string;
+}
 
 type Message = {
   role: 'user' | 'model';
   content: string;
   query?: string | null;
+  searchResults?: FofaSearchData | null;
+  isSearching?: boolean;
 };
 
 // Helper to base64 encode UTF-8 strings in the browser
@@ -30,10 +57,11 @@ export function FofaForgeClient() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hasCopied, setHasCopied] = useState<string | null>(null);
+  const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set());
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
-      content: "Hi! I'm Nexus, your FOFA query expert. I can translate your search intent into precise FOFA syntax.\n\n**Try asking things like:**\n- \"Find exposed Jenkins servers in Germany\"\n- \"Search for login pages with valid SSL certificates\"\n- \"Find Redis databases on port 6379\"\n- \"Look for WordPress sites in the US\"\n- \"Find servers running nginx in the 192.168.1.0/24 range\"\n\nWhat would you like to search for?",
+      content: "Hi! I'm Nexus, your FOFA query expert. I can translate your search intent into precise FOFA syntax and **execute searches directly** using your API credentials.\n\n**Try asking things like:**\n- \"Find exposed Jenkins servers in Germany\"\n- \"Search for login pages with valid SSL certificates\"\n- \"Find Redis databases on port 6379\"\n- \"Look for WordPress sites in the US\"\n- \"Find servers running nginx in the 192.168.1.0/24 range\"\n\nOnce I generate a query, you can **Run Search** to fetch results directly, then **download as JSON or CSV**.\n\nWhat would you like to search for?",
     },
   ]);
   const { toast } = useToast();
@@ -87,6 +115,117 @@ export function FofaForgeClient() {
     setTimeout(() => setHasCopied(null), 2000);
   };
 
+  const executeSearch = async (query: string, messageIndex: number) => {
+    // Update message to show searching state
+    setMessages((prev) => 
+      prev.map((msg, idx) => 
+        idx === messageIndex ? { ...msg, isSearching: true } : msg
+      )
+    );
+
+    try {
+      const response = await fetch('/api/fofa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, size: 100 }),
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        setMessages((prev) =>
+          prev.map((msg, idx) =>
+            idx === messageIndex
+              ? { ...msg, isSearching: false, searchResults: result.data }
+              : msg
+          )
+        );
+        setExpandedResults((prev) => new Set(prev).add(messageIndex));
+        toast({ 
+          title: 'Search completed', 
+          description: `Found ${result.data.total.toLocaleString()} results` 
+        });
+      } else {
+        toast({ 
+          title: 'Search failed', 
+          description: result.error || 'Unknown error occurred',
+          variant: 'destructive' 
+        });
+        setMessages((prev) =>
+          prev.map((msg, idx) =>
+            idx === messageIndex ? { ...msg, isSearching: false } : msg
+          )
+        );
+      }
+    } catch (error) {
+      toast({ 
+        title: 'Search failed', 
+        description: error instanceof Error ? error.message : 'Network error',
+        variant: 'destructive' 
+      });
+      setMessages((prev) =>
+        prev.map((msg, idx) =>
+          idx === messageIndex ? { ...msg, isSearching: false } : msg
+        )
+      );
+    }
+  };
+
+  const downloadResults = (results: FofaSearchResult[], format: 'json' | 'csv', query: string) => {
+    let content: string;
+    let mimeType: string;
+    let extension: string;
+
+    if (format === 'json') {
+      content = JSON.stringify(results, null, 2);
+      mimeType = 'application/json';
+      extension = 'json';
+    } else {
+      // CSV format
+      const headers = ['host', 'ip', 'port', 'protocol', 'country', 'country_name', 'region', 'city', 'as_organization', 'title', 'domain', 'server'];
+      const csvRows = [
+        headers.join(','),
+        ...results.map(row => 
+          headers.map(header => {
+            const value = row[header as keyof FofaSearchResult] || '';
+            // Escape quotes and wrap in quotes if contains comma or quote
+            const escaped = String(value).replace(/"/g, '""');
+            return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
+              ? `"${escaped}"`
+              : escaped;
+          }).join(',')
+        )
+      ];
+      content = csvRows.join('\n');
+      mimeType = 'text/csv';
+      extension = 'csv';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `fofa-results-${Date.now()}.${extension}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({ title: `Downloaded ${results.length} results as ${extension.toUpperCase()}` });
+  };
+
+  const toggleResults = (index: number) => {
+    setExpandedResults((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
   return (
     <Card className="flex flex-col h-[75vh]">
       <CardHeader>
@@ -100,7 +239,7 @@ export function FofaForgeClient() {
               <div key={index} className="space-y-3">
                 <ChatBubble role={message.role} content={message.content} />
                 {message.role === 'model' && message.query && (
-                  <div className="ml-12 flex flex-col gap-2">
+                  <div className="ml-12 flex flex-col gap-3">
                     <div className="bg-card p-4 rounded-md font-code text-sm border relative group overflow-x-auto">
                       <pre><code>{message.query}</code></pre>
                       <Button
@@ -112,13 +251,134 @@ export function FofaForgeClient() {
                         {hasCopied === message.query ? <Check className="text-green-500 h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="text-xs h-7"
+                          onClick={() => executeSearch(message.query!, index)}
+                          disabled={message.isSearching}
+                        >
+                          {message.isSearching ? (
+                            <>
+                              <LoaderCircle className="h-3 w-3 mr-1 animate-spin" /> Searching...
+                            </>
+                          ) : (
+                            <>
+                              <Play className="h-3 w-3 mr-1" /> Run Search
+                            </>
+                          )}
+                        </Button>
                         <Button variant="outline" size="sm" asChild className="text-xs h-7">
                             <a href={`https://fofa.info/result?qbase64=${base64Encode(message.query)}`} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="h-3 w-3 mr-1" /> View on FOFA
                             </a>
                         </Button>
+                        {message.searchResults && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={() => downloadResults(message.searchResults!.results, 'json', message.query!)}
+                            >
+                              <FileJson className="h-3 w-3 mr-1" /> JSON
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs h-7"
+                              onClick={() => downloadResults(message.searchResults!.results, 'csv', message.query!)}
+                            >
+                              <FileSpreadsheet className="h-3 w-3 mr-1" /> CSV
+                            </Button>
+                          </>
+                        )}
                     </div>
+
+                    {/* Search Results */}
+                    {message.searchResults && (
+                      <Collapsible 
+                        open={expandedResults.has(index)} 
+                        onOpenChange={() => toggleResults(index)}
+                        className="border rounded-md"
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" className="w-full justify-between p-4 h-auto">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="font-mono">
+                                {message.searchResults.total.toLocaleString()} total
+                              </Badge>
+                              <span className="text-sm text-muted-foreground">
+                                Showing {message.searchResults.results.length} results
+                              </span>
+                            </div>
+                            {expandedResults.has(index) ? (
+                              <ChevronUp className="h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="border-t max-h-96 overflow-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[200px]">Host</TableHead>
+                                  <TableHead>IP:Port</TableHead>
+                                  <TableHead>Protocol</TableHead>
+                                  <TableHead>Location</TableHead>
+                                  <TableHead>Server</TableHead>
+                                  <TableHead className="w-[200px]">Title</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {message.searchResults.results.map((result, rIdx) => (
+                                  <TableRow key={rIdx}>
+                                    <TableCell className="font-mono text-xs">
+                                      <a 
+                                        href={result.protocol === 'https' ? `https://${result.host}` : `http://${result.host}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        <Globe className="h-3 w-3" />
+                                        {result.host.length > 30 ? result.host.slice(0, 30) + '...' : result.host}
+                                      </a>
+                                    </TableCell>
+                                    <TableCell className="font-mono text-xs">
+                                      {result.ip}:{result.port}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="text-xs">
+                                        {result.protocol}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      <div className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                                        {result.country_name || result.country}
+                                        {result.city && `, ${result.city}`}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                      <div className="flex items-center gap-1">
+                                        <Server className="h-3 w-3 text-muted-foreground" />
+                                        {result.server || '-'}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-xs max-w-[200px] truncate" title={result.title}>
+                                      {result.title || '-'}
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
                   </div>
                 )}
               </div>
