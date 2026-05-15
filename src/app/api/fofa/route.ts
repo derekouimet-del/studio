@@ -96,8 +96,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<FofaSearc
 
     if (data.error) {
       console.error('[FOFA API] Error:', data.errmsg);
+      
+      // Provide more helpful error messages for common FOFA error codes
+      let errorMessage = data.errmsg || 'Unknown FOFA API error';
+      if (data.errmsg?.includes('820301') || data.errmsg?.includes('insufficient')) {
+        errorMessage = 'Insufficient FOFA credits. Your account may not have enough F-points for API queries. Please check your FOFA account balance at fofa.info.';
+      } else if (data.errmsg?.includes('820000') || data.errmsg?.includes('invalid')) {
+        errorMessage = 'Invalid FOFA credentials. Please verify your email and API key are correct.';
+      } else if (data.errmsg?.includes('820302')) {
+        errorMessage = 'Query limit exceeded. You have reached your daily/monthly API query limit.';
+      }
+      
       return NextResponse.json(
-        { success: false, error: data.errmsg || 'Unknown FOFA API error' },
+        { success: false, error: errorMessage },
         { status: 400 }
       );
     }

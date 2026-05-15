@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, LoaderCircle, Search, Copy, Check, ExternalLink, Play, Download, FileJson, FileSpreadsheet, ChevronDown, ChevronUp, Globe, Server, MapPin, Building } from 'lucide-react';
+import { Send, LoaderCircle, Search, Copy, Check, ExternalLink, Play, Download, FileJson, FileSpreadsheet, ChevronDown, ChevronUp, Globe, Server, MapPin, Building, CheckCircle2 } from 'lucide-react';
 import { fofaSuggestionAction } from '@/app/actions';
 import { ChatBubble } from '@/components/agent/chat-bubble';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -58,6 +58,8 @@ export function FofaForgeClient() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasCopied, setHasCopied] = useState<string | null>(null);
   const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set());
+  const [resultSize, setResultSize] = useState<number>(100);
+  const [downloadedFile, setDownloadedFile] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'model',
@@ -127,7 +129,7 @@ export function FofaForgeClient() {
       const response = await fetch('/api/fofa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, size: 100 }),
+        body: JSON.stringify({ query, size: resultSize }),
       });
 
       const result = await response.json();
@@ -171,47 +173,52 @@ export function FofaForgeClient() {
     }
   };
 
-  const downloadResults = (results: FofaSearchResult[], format: 'json' | 'csv', query: string) => {
-    let content: string;
-    let mimeType: string;
-    let extension: string;
+  const downloadResults = async (results: FofaSearchResult[], format: 'json' | 'csv', query: string) => {
+    const filename = `fofa-results-${Date.now()}.${format}`;
+    
+    try {
+      const response = await fetch('/api/fofa/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results, format, filename }),
+      });
 
-    if (format === 'json') {
-      content = JSON.stringify(results, null, 2);
-      mimeType = 'application/json';
-      extension = 'json';
-    } else {
-      // CSV format
-      const headers = ['host', 'ip', 'port', 'protocol', 'country', 'country_name', 'region', 'city', 'as_organization', 'title', 'domain', 'server'];
-      const csvRows = [
-        headers.join(','),
-        ...results.map(row => 
-          headers.map(header => {
-            const value = row[header as keyof FofaSearchResult] || '';
-            // Escape quotes and wrap in quotes if contains comma or quote
-            const escaped = String(value).replace(/"/g, '""');
-            return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
-              ? `"${escaped}"`
-              : escaped;
-          }).join(',')
-        )
-      ];
-      content = csvRows.join('\n');
-      mimeType = 'text/csv';
-      extension = 'csv';
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Open in new tab/window for download (works better in sandboxed environments)
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Try click method first
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+      setDownloadedFile(filename);
+      toast({ 
+        title: 'Download started',
+        description: `${filename} (${results.length} results) - Check your Downloads folder`,
+      });
+      setTimeout(() => setDownloadedFile(null), 5000);
+    } catch (error) {
+      console.error('[v0] Download error:', error);
+      toast({ 
+        title: 'Download failed', 
+        description: 'Could not download results. Try copying from the table instead.',
+        variant: 'destructive' 
+      });
     }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `fofa-results-${Date.now()}.${extension}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    toast({ title: `Downloaded ${results.length} results as ${extension.toUpperCase()}` });
   };
 
   const toggleResults = (index: number) => {
@@ -231,6 +238,12 @@ export function FofaForgeClient() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Search className="text-primary"/> FofaForge Query Builder</CardTitle>
         <CardDescription>Nexus translates natural language into precise FOFA queries. Describe what you want to find and get syntactically correct queries ready to execute.</CardDescription>
+        {downloadedFile && (
+          <div className="mt-2 flex items-center gap-2 text-sm text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400 px-3 py-2 rounded-md">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Downloaded: <strong>{downloadedFile}</strong> - Check your Downloads folder</span>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
         <ScrollArea className="flex-1 px-6 pb-4">
@@ -251,6 +264,24 @@ export function FofaForgeClient() {
                         {hasCopied === message.query ? <Check className="text-green-500 h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
+                    
+                    {/* Result Size Input */}
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`result-size-${index}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                        Max results:
+                      </label>
+                      <Input
+                        id={`result-size-${index}`}
+                        type="number"
+                        min={1}
+                        max={10000}
+                        value={resultSize}
+                        onChange={(e) => setResultSize(Math.min(10000, Math.max(1, parseInt(e.target.value) || 100)))}
+                        className="w-24 h-7 text-xs"
+                      />
+                      <span className="text-xs text-muted-foreground">(1-10,000)</span>
+                    </div>
+                    
                     <div className="flex gap-2 flex-wrap">
                         <Button 
                           variant="default" 
