@@ -173,53 +173,52 @@ export function FofaForgeClient() {
     }
   };
 
-  const downloadResults = (results: FofaSearchResult[], format: 'json' | 'csv', query: string) => {
-    let content: string;
-    let mimeType: string;
-    let extension: string;
+  const downloadResults = async (results: FofaSearchResult[], format: 'json' | 'csv', query: string) => {
     const filename = `fofa-results-${Date.now()}.${format}`;
+    
+    try {
+      const response = await fetch('/api/fofa/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ results, format, filename }),
+      });
 
-    if (format === 'json') {
-      content = JSON.stringify(results, null, 2);
-      mimeType = 'application/json';
-      extension = 'json';
-    } else {
-      // CSV format
-      const headers = ['host', 'ip', 'port', 'protocol', 'country', 'country_name', 'region', 'city', 'as_organization', 'title', 'domain', 'server'];
-      const csvRows = [
-        headers.join(','),
-        ...results.map(row => 
-          headers.map(header => {
-            const value = row[header as keyof FofaSearchResult] || '';
-            // Escape quotes and wrap in quotes if contains comma or quote
-            const escaped = String(value).replace(/"/g, '""');
-            return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
-              ? `"${escaped}"`
-              : escaped;
-          }).join(',')
-        )
-      ];
-      content = csvRows.join('\n');
-      mimeType = 'text/csv';
-      extension = 'csv';
+      if (!response.ok) {
+        throw new Error('Download failed');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      // Open in new tab/window for download (works better in sandboxed environments)
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      
+      // Try click method first
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+
+      setDownloadedFile(filename);
+      toast({ 
+        title: 'Download started',
+        description: `${filename} (${results.length} results) - Check your Downloads folder`,
+      });
+      setTimeout(() => setDownloadedFile(null), 5000);
+    } catch (error) {
+      console.error('[v0] Download error:', error);
+      toast({ 
+        title: 'Download failed', 
+        description: 'Could not download results. Try copying from the table instead.',
+        variant: 'destructive' 
+      });
     }
-
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    setDownloadedFile(filename);
-    toast({ 
-      title: 'Download started',
-      description: `${filename} (${results.length} results) saved to your Downloads folder`,
-    });
-    setTimeout(() => setDownloadedFile(null), 5000);
   };
 
   const toggleResults = (index: number) => {
