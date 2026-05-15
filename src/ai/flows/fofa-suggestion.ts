@@ -80,7 +80,23 @@ const prompt = ai.definePrompt({
 
 **Operating System & Software:**
 - os="Windows" - Operating system
-- app="Apache" - Application/product (uses FOFA fingerprints)
+- app="软件名" - Application fingerprint (CAUTION: requires exact FOFA fingerprint name - prefer using body/title/header instead)
+
+**IMPORTANT - AVOID app= FIELD:**
+The app= field requires exact FOFA fingerprint names which are often in Chinese or specific formats.
+Instead of app="Hikvision", use alternatives like:
+- body="Hikvision" && title="login"
+- server="Hikvision" 
+- body="DVRDVS-Webs" (for Hikvision DVRs)
+- title="Hikvision" && port="80"
+
+Instead of app="WordPress", use:
+- body="wp-content" || body="wp-includes"
+- header="X-Powered-By: PHP" && body="wordpress"
+
+Instead of app="Jenkins", use:
+- title="Dashboard [Jenkins]" || body="Jenkins-Crumb"
+- header="X-Jenkins"
 
 **Filters (boolean - NO quotes on true/false):**
 - is_domain=true - Only results with domain names
@@ -117,8 +133,8 @@ const prompt = ai.definePrompt({
 5. Find sites by organization:
    org="Amazon.com, Inc." && port="443"
 
-6. Find specific CMS:
-   app="WordPress" && country="US"
+6. Find WordPress sites:
+   (body="wp-content" || body="wp-includes") && country="US"
 
 7. Find MySQL servers:
    protocol="mysql" && port="3306"
