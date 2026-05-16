@@ -151,20 +151,27 @@ export function VirusScannerClient() {
     setScanData(null);
 
     try {
+      console.log('[v0] Starting scan for file:', selectedFile.name, 'Size:', selectedFile.size);
+      
       const formData = new FormData();
       formData.append('file', selectedFile);
 
+      console.log('[v0] Sending request to /api/virustotal/scan');
       const uploadResponse = await fetch('/api/virustotal/scan', {
         method: 'POST',
         body: formData,
       });
 
+      console.log('[v0] Upload response status:', uploadResponse.status);
       const uploadResult = await uploadResponse.json();
+      console.log('[v0] Upload result:', uploadResult);
 
       if (!uploadResult.success) {
+        console.log('[v0] Upload failed:', uploadResult.error);
         throw new Error(uploadResult.error || 'Upload failed');
       }
 
+      console.log('[v0] Upload successful, analysis ID:', uploadResult.data.analysisId);
       setAnalysisId(uploadResult.data.analysisId);
       setScanProgress(10);
 
