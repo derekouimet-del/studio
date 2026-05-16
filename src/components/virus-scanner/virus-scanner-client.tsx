@@ -74,6 +74,21 @@ export function VirusScannerClient() {
   const [scanData, setScanData] = useState<ScanData | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 
+  // Max file size: 4.5MB to stay under Vercel's serverless function limit
+  const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+
+  const validateFileSize = useCallback((file: File): boolean => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        variant: 'destructive',
+        title: 'File too large',
+        description: `Maximum file size is 4.5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
+      });
+      return false;
+    }
+    return true;
+  }, [toast]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -89,18 +104,24 @@ export function VirusScannerClient() {
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      setSelectedFile(files[0]);
-      setScanData(null);
+      const file = files[0];
+      if (validateFileSize(file)) {
+        setSelectedFile(file);
+        setScanData(null);
+      }
     }
-  }, []);
+  }, [validateFileSize]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      setSelectedFile(files[0]);
-      setScanData(null);
+      const file = files[0];
+      if (validateFileSize(file)) {
+        setSelectedFile(file);
+        setScanData(null);
+      }
     }
-  }, []);
+  }, [validateFileSize]);
 
   const clearFile = useCallback(() => {
     setSelectedFile(null);
@@ -265,7 +286,7 @@ export function VirusScannerClient() {
           <CardTitle>VirusTotal File Scanner</CardTitle>
           <CardDescription>
             Upload a file to scan it against 70+ antivirus engines using VirusTotal. 
-            Maximum file size: 32MB.
+            Maximum file size: 4.5MB.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -309,7 +330,7 @@ export function VirusScannerClient() {
                 <div className="text-center">
                   <p className="text-lg font-medium">Drop a file here or click to browse</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports any file type up to 32MB
+                    Supports any file type up to 4.5MB
                   </p>
                 </div>
               </>

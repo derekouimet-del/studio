@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Configure route segment for larger file uploads
+export const runtime = 'nodejs';
+export const maxDuration = 60;
+// This allows the route to accept larger request bodies
+export const dynamic = 'force-dynamic';
+
 const VIRUSTOTAL_API_BASE = 'https://www.virustotal.com/api/v3';
 
 export interface VirusTotalScanResponse {
@@ -56,11 +62,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<VirusTota
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
-    // Check file size (VirusTotal limit is 32MB for standard API, 650MB for large files endpoint)
-    const MAX_FILE_SIZE = 32 * 1024 * 1024; // 32MB
+    // Check file size (Vercel serverless limit ~4.5MB)
+    const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: 'File size exceeds 32MB limit. Please use a smaller file.' },
+        { success: false, error: 'File size exceeds 4.5MB limit. Please use a smaller file.' },
         { status: 400 }
       );
     }
