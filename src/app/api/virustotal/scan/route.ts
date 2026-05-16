@@ -40,6 +40,7 @@ export interface VirusTotalScanResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<VirusTotalScanResponse>> {
   try {
     const apiKey = process.env.VIRUSTOTAL_API_KEY;
+    console.log('[v0] VirusTotal scan - API key present:', !!apiKey);
 
     if (!apiKey) {
       return NextResponse.json(

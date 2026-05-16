@@ -118,7 +118,20 @@ export function VirusScannerClient() {
       setScanProgress(Math.min((attempts / maxAttempts) * 100, 95));
 
       const response = await fetch(`/api/virustotal/analysis/${id}`);
-      const result = await response.json();
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('[v0] Analysis API error:', response.status, errorText);
+        throw new Error(`Analysis request failed: ${response.status}`);
+      }
+
+      let result;
+      try {
+        result = await response.json();
+      } catch (e) {
+        console.log('[v0] Failed to parse analysis response');
+        throw new Error('Invalid response from analysis API');
+      }
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to fetch analysis');
@@ -163,7 +176,20 @@ export function VirusScannerClient() {
       });
 
       console.log('[v0] Upload response status:', uploadResponse.status);
-      const uploadResult = await uploadResponse.json();
+      
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.log('[v0] Upload error response:', errorText);
+        throw new Error(`Upload failed: ${uploadResponse.status}`);
+      }
+
+      let uploadResult;
+      try {
+        uploadResult = await uploadResponse.json();
+      } catch (e) {
+        console.log('[v0] Failed to parse upload response');
+        throw new Error('Invalid response from server');
+      }
       console.log('[v0] Upload result:', uploadResult);
 
       if (!uploadResult.success) {
