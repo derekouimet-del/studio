@@ -26,6 +26,7 @@ import {
   ArrowRightLeft,
   Sparkles,
   Code2,
+  Bug,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -54,6 +55,7 @@ const navItems = [
   { href: '/default-pass', icon: Users, label: 'Default Pass' },
   { href: '/datasieve', icon: Filter, label: 'DataSieve' },
   { href: '/breach-inspector', icon: ShieldAlert, label: 'Breach Inspector' },
+  { href: '/virus-scanner', icon: Bug, label: 'Virus Scanner' },
   { href: '/wordforge', icon: Hammer, label: 'WordForge' },
   { href: '/synthalyzer', icon: Fingerprint, label: 'Synthalyzer' },
   { href: '/voiceweaver', icon: AudioLines, label: 'Voice Weaver' },
