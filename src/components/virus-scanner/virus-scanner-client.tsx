@@ -74,15 +74,15 @@ export function VirusScannerClient() {
   const [scanData, setScanData] = useState<ScanData | null>(null);
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 
-  // Max file size: 4.5MB to stay under Vercel's serverless function limit
-  const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+  // Max file size: 2MB to stay under Vercel's serverless function limit (with FormData overhead)
+  const MAX_FILE_SIZE = 2 * 1024 * 1024;
 
   const validateFileSize = useCallback((file: File): boolean => {
     if (file.size > MAX_FILE_SIZE) {
       toast({
         variant: 'destructive',
         title: 'File too large',
-        description: `Maximum file size is 4.5MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
+        description: `Maximum file size is 2MB. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB.`,
       });
       return false;
     }
@@ -286,7 +286,7 @@ export function VirusScannerClient() {
           <CardTitle>VirusTotal File Scanner</CardTitle>
           <CardDescription>
             Upload a file to scan it against 70+ antivirus engines using VirusTotal. 
-            Maximum file size: 4.5MB.
+            Maximum file size: 2MB.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -330,7 +330,7 @@ export function VirusScannerClient() {
                 <div className="text-center">
                   <p className="text-lg font-medium">Drop a file here or click to browse</p>
                   <p className="text-sm text-muted-foreground">
-                    Supports any file type up to 4.5MB
+                    Supports any file type up to 2MB
                   </p>
                 </div>
               </>

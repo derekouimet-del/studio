@@ -62,11 +62,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<VirusTota
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
-    // Check file size (Vercel serverless limit ~4.5MB)
-    const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB
+    // Check file size (Vercel serverless limit ~2MB with FormData overhead)
+    const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: 'File size exceeds 4.5MB limit. Please use a smaller file.' },
+        { success: false, error: 'File size exceeds 2MB limit. Please use a smaller file.' },
         { status: 400 }
       );
     }
