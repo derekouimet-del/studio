@@ -33,7 +33,7 @@ export async function vulndbExplorer(input: VulnDBExplorerInput): Promise<VulnDB
   const versionClause = input.version ? `\nVersion: ${input.version}` : '';
   
   const { output } = await generateText({
-    model: 'google/gemini-2.5-flash',
+    model: 'openai/gpt-4o-mini',
     output: Output.object({
       schema: VulnDBExplorerOutputSchema,
     }),
