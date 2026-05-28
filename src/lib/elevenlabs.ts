@@ -1,8 +1,9 @@
-'use server';
-
 /**
  * ElevenLabs API client for text-to-speech and voice cloning.
+ * Uses the official ElevenLabs SDK.
  */
+
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
 const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
 
@@ -37,6 +38,12 @@ function getApiKey(): string {
     throw new Error('ELEVENLABS_API_KEY environment variable is not set');
   }
   return apiKey;
+}
+
+function getClient(): ElevenLabsClient {
+  return new ElevenLabsClient({
+    apiKey: getApiKey(),
+  });
 }
 
 /**
@@ -112,76 +119,48 @@ export async function getVoices(): Promise<ElevenLabsVoice[]> {
 /**
  * Clone a voice using audio samples (Instant Voice Cloning).
  * Requires at least 1 audio file, ideally 1-3 minutes of clear speech.
+ * Uses the official ElevenLabs SDK for proper file handling.
  */
 export async function cloneVoice(
   audioFiles: { data: string; filename: string }[],
   options: VoiceCloneOptions
 ): Promise<{ voice_id: string }> {
-  const apiKey = getApiKey();
+  const client = getClient();
   
-  const formData = new FormData();
-  formData.append('name', options.name);
-  
-  if (options.description) {
-    formData.append('description', options.description);
-  }
-  
-  if (options.labels) {
-    formData.append('labels', JSON.stringify(options.labels));
-  }
-
-  // Add audio files
-  for (const file of audioFiles) {
-    // Convert base64 data URI to Blob
+  // Convert base64 data URIs to Blobs for the SDK
+  const files: Blob[] = audioFiles.map((file) => {
     const base64Data = file.data.split(',')[1] || file.data;
     const mimeMatch = file.data.match(/^data:([^;]+);/);
     const mimeType = mimeMatch ? mimeMatch[1] : 'audio/mpeg';
     
     const binaryData = Buffer.from(base64Data, 'base64');
-    const blob = new Blob([binaryData], { type: mimeType });
-    
-    formData.append('files', blob, file.filename);
-  }
-
-  const response = await fetch(`${ELEVENLABS_API_BASE}/voices/add`, {
-    method: 'POST',
-    headers: {
-      'xi-api-key': apiKey,
-    },
-    body: formData,
+    return new Blob([binaryData], { type: mimeType });
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = `Voice cloning failed: ${response.status}`;
-    try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.detail?.message || errorJson.detail || errorMessage;
-    } catch {
-      errorMessage = errorText || errorMessage;
-    }
-    throw new Error(errorMessage);
-  }
+  try {
+    const voice = await client.voices.ivc.create({
+      name: options.name,
+      description: options.description,
+      files,
+    });
 
-  return await response.json();
+    return { voice_id: voice.voiceId };
+  } catch (error: any) {
+    console.error('[v0] ElevenLabs SDK error:', error);
+    throw new Error(error.message || 'Voice cloning failed');
+  }
 }
 
 /**
  * Delete a cloned voice.
  */
 export async function deleteVoice(voiceId: string): Promise<void> {
-  const apiKey = getApiKey();
+  const client = getClient();
   
-  const response = await fetch(`${ELEVENLABS_API_BASE}/voices/${voiceId}`, {
-    method: 'DELETE',
-    headers: {
-      'xi-api-key': apiKey,
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to delete voice: ${response.status} - ${errorText}`);
+  try {
+    await client.voices.delete(voiceId);
+  } catch (error: any) {
+    throw new Error(error.message || `Failed to delete voice: ${voiceId}`);
   }
 }
 
