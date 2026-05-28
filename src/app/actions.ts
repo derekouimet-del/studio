@@ -14,6 +14,7 @@ import { mapAttackSurface, type AttackSurfaceMapperInput } from '@/ai/flows/atta
 import { vulndbExplorer, type VulnDBExplorerInput } from '@/ai/flows/vulndb-explorer';
 import { defaultPass, type DefaultPassInput } from '@/ai/flows/default-pass';
 import { textToSpeech, type TextToSpeechInput } from '@/ai/flows/text-to-speech';
+import { getVoices, cloneVoice, deleteVoice, type ElevenLabsVoice, type VoiceCloneOptions } from '@/lib/elevenlabs';
 import { threatView, type ThreatViewInput } from '@/ai/flows/threat-view';
 import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
@@ -256,5 +257,49 @@ export async function coderAction(input: CoderInput) {
   } catch (error: any) {
     console.error('Coder action failed:', error);
     return { success: false, error: error.message || 'An error occurred while generating code.' };
+  }
+}
+
+export async function listVoicesAction(): Promise<{ success: boolean; data?: ElevenLabsVoice[]; error?: string }> {
+  try {
+    const voices = await getVoices();
+    return { success: true, data: voices };
+  } catch (error: any) {
+    console.error('List voices failed:', error);
+    return { success: false, error: error.message || 'Failed to fetch available voices.' };
+  }
+}
+
+export interface VoiceCloneInput {
+  name: string;
+  description?: string;
+  audioFiles: { data: string; filename: string }[];
+}
+
+export async function voiceCloneAction(input: VoiceCloneInput): Promise<{ success: boolean; data?: { voice_id: string }; error?: string }> {
+  try {
+    if (!input.audioFiles || input.audioFiles.length === 0) {
+      return { success: false, error: 'At least one audio file is required for voice cloning.' };
+    }
+    
+    const result = await cloneVoice(input.audioFiles, {
+      name: input.name,
+      description: input.description,
+    });
+    
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error('Voice clone failed:', error);
+    return { success: false, error: error.message || 'Failed to clone voice.' };
+  }
+}
+
+export async function deleteVoiceAction(voiceId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await deleteVoice(voiceId);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Delete voice failed:', error);
+    return { success: false, error: error.message || 'Failed to delete voice.' };
   }
 }
