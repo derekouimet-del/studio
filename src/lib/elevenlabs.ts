@@ -113,7 +113,7 @@ export async function getVoices(): Promise<ElevenLabsVoice[]> {
 /**
  * Clone a voice using audio samples (Instant Voice Cloning).
  * Requires at least 1 audio file, ideally 1-3 minutes of clear speech.
- * Uses form-data package for proper Node.js multipart handling.
+ * Uses form-data package with proper stream handling for Node.js.
  */
 export async function cloneVoice(
   audioFiles: { data: string; filename: string }[],
@@ -146,13 +146,17 @@ export async function cloneVoice(
 
   console.log('[v0] Sending voice clone request to ElevenLabs...');
   
+  // Use form-data's submit method or convert to buffer for fetch
+  const formBuffer = formData.getBuffer();
+  const formHeaders = formData.getHeaders();
+  
   const response = await fetch(`${ELEVENLABS_API_BASE}/voices/add`, {
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
-      ...formData.getHeaders(),
+      ...formHeaders,
     },
-    body: formData as any,
+    body: formBuffer,
   });
 
   const responseText = await response.text();

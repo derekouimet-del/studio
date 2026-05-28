@@ -95,6 +95,7 @@ export function VoiceCloneClient() {
     setClonedVoiceId(null);
 
     try {
+      console.log('[v0] Starting voice clone request...');
       const response = await fetch('/api/voice-clone', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -107,7 +108,27 @@ export function VoiceCloneClient() {
           })),
         }),
       });
-      const data = await response.json();
+      
+      console.log('[v0] Response status:', response.status);
+      console.log('[v0] Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('[v0] Response text:', responseText.substring(0, 500));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('[v0] JSON parse error:', parseError);
+        console.error('[v0] Raw response:', responseText);
+        toast({ 
+          variant: 'destructive', 
+          title: 'Cloning Failed', 
+          description: `Invalid response from server: ${responseText.substring(0, 100)}` 
+        });
+        setIsLoading(false);
+        return;
+      }
 
       if (response.ok && data.voice_id) {
         setClonedVoiceId(data.voice_id);
@@ -116,9 +137,10 @@ export function VoiceCloneClient() {
           description: `Your voice "${voiceName}" is now ready to use.` 
         });
       } else {
-        toast({ variant: 'destructive', title: 'Cloning Failed', description: data.error });
+        toast({ variant: 'destructive', title: 'Cloning Failed', description: data.error || 'Unknown error' });
       }
     } catch (error: any) {
+      console.error('[v0] Fetch error:', error);
       toast({ variant: 'destructive', title: 'Cloning Failed', description: error.message });
     }
     
