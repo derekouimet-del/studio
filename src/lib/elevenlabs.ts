@@ -3,6 +3,8 @@
  * Uses direct API calls for reliable serverless compatibility.
  */
 
+import FormData from 'form-data';
+
 const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io/v1';
 
 export interface ElevenLabsVoice {
@@ -111,7 +113,7 @@ export async function getVoices(): Promise<ElevenLabsVoice[]> {
 /**
  * Clone a voice using audio samples (Instant Voice Cloning).
  * Requires at least 1 audio file, ideally 1-3 minutes of clear speech.
- * Uses the direct API endpoint for proper multipart/form-data handling.
+ * Uses form-data package for proper Node.js multipart handling.
  */
 export async function cloneVoice(
   audioFiles: { data: string; filename: string }[],
@@ -119,7 +121,7 @@ export async function cloneVoice(
 ): Promise<{ voice_id: string }> {
   const apiKey = getApiKey();
   
-  // Create FormData for multipart upload
+  // Create FormData for multipart upload using form-data package
   const formData = new FormData();
   formData.append('name', options.name);
   
@@ -127,17 +129,19 @@ export async function cloneVoice(
     formData.append('description', options.description);
   }
 
-  // Convert base64 data URIs to Blobs and append to FormData
+  // Convert base64 data URIs to Buffers and append to FormData
   for (const file of audioFiles) {
     const base64Data = file.data.split(',')[1] || file.data;
     const mimeMatch = file.data.match(/^data:([^;]+);/);
     const mimeType = mimeMatch ? mimeMatch[1] : 'audio/mpeg';
     
-    const binaryData = Buffer.from(base64Data, 'base64');
-    const blob = new Blob([binaryData], { type: mimeType });
+    const buffer = Buffer.from(base64Data, 'base64');
     
-    // Each file needs to be appended with the key 'files'
-    formData.append('files', blob, file.filename);
+    // Append buffer with filename and content type
+    formData.append('files', buffer, {
+      filename: file.filename,
+      contentType: mimeType,
+    });
   }
 
   console.log('[v0] Sending voice clone request to ElevenLabs...');
@@ -146,9 +150,9 @@ export async function cloneVoice(
     method: 'POST',
     headers: {
       'xi-api-key': apiKey,
-      // Don't set Content-Type - let fetch set it with boundary for FormData
+      ...formData.getHeaders(),
     },
-    body: formData,
+    body: formData as any,
   });
 
   const responseText = await response.text();
