@@ -7,8 +7,8 @@
  * - FofaSuggestionOutput - The return type for the function.
  */
 
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
 const ChatMessageSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -27,15 +27,7 @@ const FofaSuggestionOutputSchema = z.object({
 });
 export type FofaSuggestionOutput = z.infer<typeof FofaSuggestionOutputSchema>;
 
-export async function fofaSuggestion(input: FofaSuggestionInput): Promise<FofaSuggestionOutput> {
-  return fofaSuggestionFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'fofaSuggestionPrompt',
-  input: { schema: FofaSuggestionInputSchema },
-  output: { schema: FofaSuggestionOutputSchema },
-  prompt: `You are Nexus, an AI assistant and FOFA search engine expert. Your role is to translate natural language requests into precise, executable FOFA queries.
+const SYSTEM_PROMPT = `You are Nexus, an AI assistant and FOFA search engine expert. Your role is to translate natural language requests into precise, executable FOFA queries.
 
 **CRITICAL SYNTAX RULES:**
 - String values MUST use double quotes: title="value" (NEVER single quotes)
@@ -158,25 +150,26 @@ Instead of app="Jenkins", use:
 - NEVER use single quotes - FOFA only accepts double quotes
 - NEVER put quotes around true/false values
 - Use && for AND, || for OR (not 'and' or 'or')
-- For wildcard subdomain search, use host="*.example.com" or domain="example.com"
+- For wildcard subdomain search, use host="*.example.com" or domain="example.com"`;
+
+export async function fofaSuggestion(input: FofaSuggestionInput): Promise<FofaSuggestionOutput> {
+  const historyText = input.history
+    .map((msg) => `- **${msg.role}**: ${msg.content}`)
+    .join('\n');
+
+  const prompt = `${SYSTEM_PROMPT}
 
 Conversation History:
-{{#each history}}
-- **{{role}}**: {{{content}}}
-{{/each}}
+${historyText}
 
 User's new message:
-- **user**: {{{message}}}`,
-});
+- **user**: ${input.message}`;
 
-const fofaSuggestionFlow = ai.defineFlow(
-  {
-    name: 'fofaSuggestionFlow',
-    inputSchema: FofaSuggestionInputSchema,
-    outputSchema: FofaSuggestionOutputSchema,
-  },
-  async (input) => {
-    const { output } = await prompt(input);
-    return output!;
-  }
-);
+  const { object } = await generateObject({
+    model: 'google/gemini-2.0-flash' as any,
+    schema: FofaSuggestionOutputSchema,
+    prompt,
+  });
+
+  return object;
+}

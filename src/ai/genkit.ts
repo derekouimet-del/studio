@@ -1,7 +1,25 @@
-import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import { generateObject } from 'ai';
+import { z } from 'zod';
 
-export const ai = genkit({
-  plugins: [googleAI()],
-  model: 'googleai/gemini-2.0-flash',
-});
+// Re-export z for compatibility with existing flows
+export { z };
+
+// AI helper that uses Vercel AI Gateway (no API key needed in v0)
+export const ai = {
+  generateObject: async <T extends z.ZodType>({
+    model,
+    schema,
+    prompt,
+  }: {
+    model: string;
+    schema: T;
+    prompt: string;
+  }): Promise<{ object: z.infer<T> }> => {
+    const result = await generateObject({
+      model: model as any,
+      schema,
+      prompt,
+    });
+    return { object: result.object };
+  },
+};
