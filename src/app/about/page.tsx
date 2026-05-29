@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ExternalLink, Coffee, Send, Sparkles, Github, Twitter, Linkedin, ChevronRight, MessageSquarePlus } from 'lucide-react';
+import { Star, ExternalLink, Coffee, Send, Sparkles, Github, Twitter, Linkedin, ChevronRight, MessageSquarePlus } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,26 +14,48 @@ import { Header } from '@/components/layout/header';
 
 const projects = [
   {
-    name: 'off-the-chAIn',
-    description: 'Un-filtered, un-restricted AI expression.',
-    url: 'https://off-the-ch-a-in.vercel.app',
-    logo: '/logos/off-the-chain.png',
-    tags: ['RAW', 'CREATIVE', 'FAST'],
-  },
-  {
-    name: 'clAIm',
-    description: 'Protecting identity and voice in the digital age.',
-    url: 'https://claim.vercel.app',
-    logo: '/logos/claim.png',
-    tags: ['VERIFY', 'PROTECT', 'OWN'],
+    name: 'Flock-U',
+    description: 'Real-time social network visualization and OSINT tool. Track influence, map connections, and analyze social dynamics.',
+    url: 'https://flock-u.com',
+    logo: '/logos/flock-u.png',
+    tags: ['OSINT', 'SOCIAL', 'ANALYTICS'],
+    featured: true,
   },
   {
     name: 'Pen-Quest',
-    description: 'AI-powered penetration testing toolkit.',
+    description: 'AI-powered penetration testing toolkit with reconnaissance, vulnerability assessment, and exploitation tools.',
     url: '/',
-    logo: '/logos/pen-quest.png',
+    logo: '/logos/penquest.png',
     tags: ['SECURITY', 'AI', 'RECON'],
     isInternal: true,
+  },
+  {
+    name: 'Whisper',
+    description: 'Private, encrypted image sharing with end-to-end security. Your moments, protected.',
+    url: 'https://whisper.pics',
+    logo: '/logos/whisper.png',
+    tags: ['PRIVACY', 'ENCRYPTED', 'SECURE'],
+  },
+  {
+    name: 'CamFeed',
+    description: 'Comprehensive IP camera suite for monitoring, management, and analysis across multiple feeds.',
+    url: 'https://camfeed.click',
+    logo: '/logos/camfeed.png',
+    tags: ['SURVEILLANCE', 'MONITORING', 'FEEDS'],
+  },
+  {
+    name: 'Product Valuation',
+    description: 'AI-powered product valuation tool. Get instant market analysis and pricing insights.',
+    url: 'https://v0.app/projects/prj_ABa7xRGNesjAo7koweGxobEmAywH',
+    logo: '/logos/product-val.png',
+    tags: ['AI', 'VALUATION', 'MARKET'],
+  },
+  {
+    name: 'AI Companion',
+    description: 'Your personal AI assistant with memory, personality, and emotional intelligence.',
+    url: 'https://v0.app/projects/prj_3aobKiw2WbxMBjYVr6NIYIxrPhXj',
+    logo: '/logos/ai-companion.png',
+    tags: ['AI', 'COMPANION', 'CHAT'],
   },
 ];
 
@@ -142,22 +164,34 @@ export default function AboutPage() {
               {projects.map((project) => (
                 <Card 
                   key={project.name} 
-                  className="group relative overflow-hidden border-border/50 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/5"
+                  className={`group relative overflow-hidden border-border/50 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/5 ${project.featured ? 'ring-2 ring-accent/30 border-accent/30' : ''}`}
                 >
+                  {project.featured && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <Badge className="bg-accent text-accent-foreground text-xs gap-1">
+                        <Star className="size-3 fill-current" />
+                        Featured
+                      </Badge>
+                    </div>
+                  )}
                   <CardHeader className="pb-4">
                     <div className="flex items-center gap-4">
-                      <div className="size-16 rounded-xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center overflow-hidden">
-                        {project.logo ? (
-                          <div className="size-12 rounded-lg bg-background/50 flex items-center justify-center">
-                            <span className="text-xl font-bold text-accent">
-                              {project.name.slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xl font-bold text-accent">
-                            {project.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
+                      <div className="size-16 rounded-xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center overflow-hidden p-1">
+                        <Image
+                          src={project.logo}
+                          alt={`${project.name} logo`}
+                          width={56}
+                          height={56}
+                          className="rounded-lg object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<span class="text-xl font-bold text-accent">${project.name.slice(0, 2).toUpperCase()}</span>`;
+                            }
+                          }}
+                        />
                       </div>
                       <div>
                         <CardTitle className="text-lg group-hover:text-accent transition-colors">
