@@ -28,6 +28,7 @@ import {
   Sparkles,
   Code2,
   Bug,
+  User,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -66,6 +67,7 @@ const navItems = [
   { href: '/metaview', icon: Tag, label: 'MetaView' },
   { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
+  { href: '/about', icon: User, label: 'About Me' },
 ];
 
 export function AppSidebar() {
