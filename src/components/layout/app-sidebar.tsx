@@ -29,6 +29,7 @@ import {
   Code2,
   Bug,
   User,
+  Video,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -65,6 +66,7 @@ const navItems = [
   { href: '/oracle', icon: Sparkles, label: 'Oracle' },
   { href: '/coder', icon: Code2, label: 'Coder' },
   { href: '/metaview', icon: Tag, label: 'MetaView' },
+  { href: '/video-vault', icon: Video, label: 'Video Vault' },
   { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
   { href: '/about', icon: User, label: 'About Me' },
