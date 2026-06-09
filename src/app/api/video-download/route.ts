@@ -11,26 +11,67 @@ const BROWSER_UA =
 // logged-in browser session). YouTube blocks anonymous datacenter requests with a
 // "Sign in to confirm you're not a bot" error; supplying cookies bypasses that, the
 // same way `yt-dlp --cookies` does.
-function buildAgent(cookieHeader?: string | null) {
-  if (!cookieHeader || !cookieHeader.trim()) return undefined;
+function buildAgent(raw?: string | null) {
+  if (!raw || !raw.trim()) return undefined;
   try {
-    const cookies = cookieHeader
-      .split(';')
-      .map((pair) => {
-        const idx = pair.indexOf('=');
-        if (idx === -1) return null;
-        const name = pair.slice(0, idx).trim();
-        const value = pair.slice(idx + 1).trim();
-        if (!name) return null;
-        return { name, value, domain: '.youtube.com', path: '/' };
-      })
-      .filter(Boolean) as { name: string; value: string; domain: string; path: string }[];
+    const cookies = parseCookies(raw);
     if (cookies.length === 0) return undefined;
     return ytdl.createAgent(cookies);
   } catch (error) {
     console.error('[VideoVault] Failed to build cookie agent:', error);
     return undefined;
   }
+}
+
+type ParsedCookie = { name: string; value: string; domain: string; path: string };
+
+// Accept cookies in either of two common formats:
+//   1. HTTP "Cookie:" header style:  name=value; name2=value2
+//   2. Browser DevTools table style: one cookie per line as `name <whitespace> value`,
+//      where the value may be wrapped in double quotes.
+function parseCookies(raw: string): ParsedCookie[] {
+  const text = raw.trim();
+  const wrap = (name: string, value: string): ParsedCookie => ({
+    name: name.trim(),
+    // Strip surrounding quotes that DevTools adds around values.
+    value: value.trim().replace(/^"([\s\S]*)"$/, '$1'),
+    domain: '.youtube.com',
+    path: '/',
+  });
+
+  // Detect the DevTools table format: multiple lines, and the first line has no `=`
+  // before any tab/whitespace separator (i.e. it looks like `name<tab>value`).
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const looksLikeTable =
+    lines.length > 1 &&
+    lines.some((l) => /\S\s+\S/.test(l)) &&
+    !/^[^=\s]+=/.test(lines[0]);
+
+  if (looksLikeTable) {
+    return lines
+      .map((line) => {
+        // Split on the first run of whitespace (tabs or spaces).
+        const match = /^(\S+)\s+([\s\S]+)$/.exec(line);
+        if (!match) return null;
+        const [, name, value] = match;
+        if (!name || !value) return null;
+        return wrap(name, value);
+      })
+      .filter(Boolean) as ParsedCookie[];
+  }
+
+  // Otherwise treat it as a standard Cookie header string.
+  return text
+    .split(';')
+    .map((pair) => {
+      const idx = pair.indexOf('=');
+      if (idx === -1) return null;
+      const name = pair.slice(0, idx);
+      const value = pair.slice(idx + 1);
+      if (!name.trim()) return null;
+      return wrap(name, value);
+    })
+    .filter(Boolean) as ParsedCookie[];
 }
 
 // Validate that a string is a usable http(s) URL

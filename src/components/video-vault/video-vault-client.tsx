@@ -199,19 +199,22 @@ export function VideoVaultClient() {
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3 space-y-2">
-                <Label htmlFor="yt-cookies">Cookie header</Label>
+                <Label htmlFor="yt-cookies">Cookies</Label>
                 <Textarea
                   id="yt-cookies"
-                  placeholder="VISITOR_INFO1_LIVE=...; LOGIN_INFO=...; SID=..."
+                  placeholder={'SID="..."  __Secure-3PSID="..."  LOGIN_INFO="..."\n\u2014 or \u2014\nSID=...; __Secure-3PSID=...; LOGIN_INFO=...'}
                   value={cookies}
                   onChange={(e) => setCookies(e.target.value)}
                   className="font-code text-xs min-h-24"
                 />
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   YouTube blocks anonymous server requests with a {'"'}Sign in to confirm you{'\u2019'}re not a bot{'"'}{' '}
-                  error. To bypass it, open YouTube while logged in, copy your{' '}
-                  <span className="font-code">Cookie</span> request header from DevTools (Network tab), and paste it
-                  here. This works the same way as <span className="font-code">yt-dlp --cookies</span>.
+                  error. To bypass it, open YouTube while logged in and paste your cookies here. Two formats are
+                  accepted: the raw <span className="font-code">Cookie</span> request header (
+                  <span className="font-code">name=value; name=value</span>), or the DevTools{' '}
+                  <span className="font-code">Application {'\u2192'} Cookies</span> table pasted directly (one{' '}
+                  <span className="font-code">name{'\t'}value</span> per line). This works the same way as{' '}
+                  <span className="font-code">yt-dlp --cookies</span>.
                 </p>
               </CollapsibleContent>
             </Collapsible>
