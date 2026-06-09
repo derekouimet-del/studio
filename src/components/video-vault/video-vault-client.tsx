@@ -17,6 +17,9 @@ interface VideoMeta {
   contentType: string;
   sizeBytes: number | null;
   isVideo: boolean;
+  isMedia: boolean;
+  isHtml: boolean;
+  downloadable: boolean;
   supportsRange: boolean;
 }
 
@@ -50,10 +53,17 @@ export function VideoVaultClient() {
         throw new Error(json.error || 'Failed to inspect URL.');
       }
       setMeta(json.data);
-      if (!json.data.isVideo) {
+      if (json.data.isHtml) {
+        toast({
+          variant: 'destructive',
+          title: 'Not a video file',
+          description:
+            'That URL returns a web page, not a direct media file. Paste a link that points straight at the video (e.g. ending in .mp4).',
+        });
+      } else if (!json.data.downloadable) {
         toast({
           title: 'Heads up',
-          description: `The URL reports content type "${json.data.contentType}". It may not be a direct video file.`,
+          description: `The URL reports content type "${json.data.contentType}". It may not be a downloadable video file.`,
         });
       } else {
         toast({ title: 'Source Found', description: 'Video details loaded below.' });
@@ -177,10 +187,24 @@ export function VideoVaultClient() {
                 <dd className="font-code font-medium sm:mt-1">{meta.isVideo ? 'Yes' : 'Uncertain'}</dd>
               </div>
             </dl>
+            {!meta.downloadable && (
+              <div className="mt-6 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive-foreground">
+                <AlertTriangle className="size-4 mt-0.5 shrink-0 text-destructive" />
+                <p className="text-foreground">
+                  {meta.isHtml
+                    ? 'This URL points to a web page, not a direct video file. Downloading it would save the page\u2019s HTML, which is not playable. Use a link that points straight at the media file.'
+                    : `This content type (${meta.contentType}) does not look like a downloadable media file. The download may not be playable.`}
+                </p>
+              </div>
+            )}
           </CardContent>
           <Separator />
           <CardFooter className="pt-6">
-            <Button onClick={handleDownload} disabled={isDownloading} className="w-full sm:w-auto">
+            <Button
+              onClick={handleDownload}
+              disabled={isDownloading || !meta.downloadable}
+              className="w-full sm:w-auto"
+            >
               {isDownloading ? <LoaderCircle className="animate-spin" /> : <Download />}
               {isDownloading ? 'Downloading...' : 'Download Video'}
             </Button>

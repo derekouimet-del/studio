@@ -13,13 +13,45 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
-// Attempt to derive a reasonable filename from the URL or Content-Disposition header
+// Map a video content-type to a file extension
+function extForContentType(contentType: string | null): string | null {
+  if (!contentType) return null;
+  const ct = contentType.toLowerCase();
+  if (ct.includes('mp4')) return 'mp4';
+  if (ct.includes('webm')) return 'webm';
+  if (ct.includes('quicktime')) return 'mov';
+  if (ct.includes('x-matroska') || ct.includes('matroska')) return 'mkv';
+  if (ct.includes('x-msvideo')) return 'avi';
+  if (ct.includes('x-flv')) return 'flv';
+  if (ct.includes('mpeg')) return 'mpeg';
+  if (ct.includes('3gpp')) return '3gp';
+  if (ct.includes('ogg')) return 'ogv';
+  return null;
+}
+
+// Determine whether a content-type represents downloadable media (not an HTML page)
+function isMediaContentType(contentType: string | null): boolean {
+  if (!contentType) return false;
+  const ct = contentType.toLowerCase();
+  return (
+    ct.startsWith('video/') ||
+    ct.startsWith('audio/') ||
+    ct.includes('mpegurl') || // HLS playlists
+    ct.includes('octet-stream') ||
+    ct.includes('application/mp4')
+  );
+}
+
+// Attempt to derive a reasonable filename from the URL or Content-Disposition header,
+// always ensuring the extension matches the real content type when known.
 function deriveFilename(url: string, contentDisposition: string | null, contentType: string | null): string {
+  const realExt = extForContentType(contentType);
+
   // 1. Try Content-Disposition header
   if (contentDisposition) {
     const match = /filename\*?=(?:UTF-8'')?["']?([^"';\n]+)["']?/i.exec(contentDisposition);
     if (match?.[1]) {
-      return decodeURIComponent(match[1].trim());
+      return fixExtension(decodeURIComponent(match[1].trim()), realExt);
     }
   }
 
@@ -28,21 +60,24 @@ function deriveFilename(url: string, contentDisposition: string | null, contentT
     const pathname = new URL(url).pathname;
     const last = pathname.split('/').filter(Boolean).pop();
     if (last && /\.[a-z0-9]{2,4}$/i.test(last)) {
-      return decodeURIComponent(last);
+      return fixExtension(decodeURIComponent(last), realExt);
     }
   } catch {
     // ignore
   }
 
   // 3. Fall back to a generated name based on content type
-  const ext = contentType?.includes('webm')
-    ? 'webm'
-    : contentType?.includes('ogg')
-      ? 'ogv'
-      : contentType?.includes('quicktime')
-        ? 'mov'
-        : 'mp4';
-  return `video-${Date.now()}.${ext}`;
+  return `video-${Date.now()}.${realExt ?? 'mp4'}`;
+}
+
+// Ensure the filename ends with the real extension derived from the content type.
+function fixExtension(name: string, realExt: string | null): string {
+  if (!realExt) return name;
+  const currentExt = /\.([a-z0-9]{2,4})$/i.exec(name)?.[1]?.toLowerCase();
+  if (currentExt === realExt) return name;
+  // Replace an existing extension, or append if there isn't one.
+  const base = currentExt ? name.replace(/\.[a-z0-9]{2,4}$/i, '') : name;
+  return `${base}.${realExt}`;
 }
 
 // HEAD-style metadata probe so the client can preview details before downloading
@@ -77,6 +112,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     const isVideo = !!contentType && contentType.startsWith('video/');
+    const isMedia = isMediaContentType(contentType);
+    const isHtml = !!contentType && contentType.includes('text/html');
     const filename = deriveFilename(target, probe.headers.get('content-disposition'), contentType);
 
     return NextResponse.json({
@@ -87,6 +124,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         contentType: contentType ?? 'unknown',
         sizeBytes: totalBytes,
         isVideo,
+        isMedia,
+        isHtml,
+        // A page URL (HTML) cannot be downloaded as a video by a simple proxy.
+        downloadable: isMedia,
         supportsRange: !!contentRange || probe.headers.get('accept-ranges') === 'bytes',
       },
     });
@@ -123,8 +164,23 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+
+    // Guard against saving an HTML page (e.g. a YouTube/social "watch" page) as a video file.
+    // A simple proxy cannot extract the underlying stream from those pages, so the result
+    // would be an unplayable file. Fail loudly with guidance instead.
+    if (contentType.includes('text/html')) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'That URL returns a web page, not a video file. Video Vault downloads direct media links (URLs that point straight at an .mp4/.webm/.mov file). Pages like YouTube or social posts hide the real stream behind a player and require a dedicated extractor (yt-dlp), which is not available in this environment.',
+        },
+        { status: 415 }
+      );
+    }
+
     const finalName = (typeof filename === 'string' && filename.trim())
-      ? filename.trim()
+      ? fixExtension(filename.trim(), extForContentType(contentType))
       : deriveFilename(url, upstream.headers.get('content-disposition'), contentType);
 
     const headers = new Headers();
