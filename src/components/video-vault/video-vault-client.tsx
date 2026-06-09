@@ -7,12 +7,28 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-import { LoaderCircle, Download, Search, Film, FileVideo, AlertTriangle, Link2 } from 'lucide-react';
+import {
+  LoaderCircle,
+  Download,
+  Search,
+  Film,
+  FileVideo,
+  AlertTriangle,
+  Link2,
+  Youtube,
+  ChevronDown,
+  Cookie,
+  Clock,
+  User,
+} from 'lucide-react';
 
 interface VideoMeta {
   url: string;
+  source?: 'youtube' | 'direct';
   filename: string;
   contentType: string;
   sizeBytes: number | null;
@@ -21,6 +37,12 @@ interface VideoMeta {
   isHtml: boolean;
   downloadable: boolean;
   supportsRange: boolean;
+  // YouTube-only fields
+  title?: string;
+  author?: string | null;
+  lengthSeconds?: number | null;
+  thumbnail?: string | null;
+  qualityLabel?: string | null;
 }
 
 function formatBytes(bytes: number | null): string {
@@ -31,13 +53,25 @@ function formatBytes(bytes: number | null): string {
   return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${units[i]}`;
 }
 
+function formatDuration(seconds: number | null | undefined): string {
+  if (!seconds || Number.isNaN(seconds)) return 'Unknown';
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
 export function VideoVaultClient() {
   const { toast } = useToast();
 
   const [url, setUrl] = useState('');
+  const [cookies, setCookies] = useState('');
   const [meta, setMeta] = useState<VideoMeta | null>(null);
   const [isProbing, setIsProbing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  const isYouTube = /(?:youtube\.com|youtu\.be)/i.test(url);
 
   const handleInspect = async () => {
     if (!url.trim()) {
@@ -47,7 +81,9 @@ export function VideoVaultClient() {
     setIsProbing(true);
     setMeta(null);
     try {
-      const res = await fetch(`/api/video-download?url=${encodeURIComponent(url.trim())}`);
+      const params = new URLSearchParams({ url: url.trim() });
+      if (cookies.trim()) params.set('cookies', cookies.trim());
+      const res = await fetch(`/api/video-download?${params.toString()}`);
       const json = await res.json();
       if (!json.success) {
         throw new Error(json.error || 'Failed to inspect URL.');
@@ -88,7 +124,7 @@ export function VideoVaultClient() {
       const res = await fetch('/api/video-download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: target, filename: meta?.filename }),
+        body: JSON.stringify({ url: target, filename: meta?.filename, cookies: cookies.trim() || undefined }),
       });
 
       if (!res.ok) {
@@ -118,6 +154,8 @@ export function VideoVaultClient() {
     }
   };
 
+  const isYouTubeMeta = meta?.source === 'youtube';
+
   return (
     <div className="space-y-8 max-w-3xl">
       <Card>
@@ -126,7 +164,8 @@ export function VideoVaultClient() {
             <Link2 className="text-primary" /> Video Source URL
           </CardTitle>
           <CardDescription>
-            Paste a direct link to a video file. The server fetches and streams the file back to your browser.
+            Paste a YouTube link or a direct video file URL. The server extracts and streams the video back to your
+            browser.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -135,7 +174,7 @@ export function VideoVaultClient() {
             <div className="flex flex-col sm:flex-row gap-3">
               <Input
                 id="video-url"
-                placeholder="https://example.com/path/to/video.mp4"
+                placeholder="https://www.youtube.com/watch?v=... or https://example.com/video.mp4"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onKeyDown={(e) => {
@@ -150,11 +189,39 @@ export function VideoVaultClient() {
             </div>
           </div>
 
+          {isYouTube && (
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Cookie className="size-4" />
+                  YouTube cookies (optional)
+                  <ChevronDown className="size-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3 space-y-2">
+                <Label htmlFor="yt-cookies">Cookie header</Label>
+                <Textarea
+                  id="yt-cookies"
+                  placeholder="VISITOR_INFO1_LIVE=...; LOGIN_INFO=...; SID=..."
+                  value={cookies}
+                  onChange={(e) => setCookies(e.target.value)}
+                  className="font-code text-xs min-h-24"
+                />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  YouTube blocks anonymous server requests with a {'"'}Sign in to confirm you{'\u2019'}re not a bot{'"'}{' '}
+                  error. To bypass it, open YouTube while logged in, copy your{' '}
+                  <span className="font-code">Cookie</span> request header from DevTools (Network tab), and paste it
+                  here. This works the same way as <span className="font-code">yt-dlp --cookies</span>.
+                </p>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
             <AlertTriangle className="size-4 mt-0.5 shrink-0 text-primary" />
             <p>
-              Works with direct media links (mp4, webm, mov, etc.). Streaming sites that protect content behind player
-              manifests or DRM are not supported.
+              Supports YouTube links and direct media URLs (mp4, webm, mov, etc.). Other streaming sites that protect
+              content behind player manifests or DRM are not supported.
             </p>
           </div>
         </CardContent>
@@ -164,16 +231,50 @@ export function VideoVaultClient() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Film className="text-primary" /> Source Details
+              {isYouTubeMeta ? <Youtube className="text-primary" /> : <Film className="text-primary" />}
+              {isYouTubeMeta ? 'Video Details' : 'Source Details'}
             </CardTitle>
-            <CardDescription className="break-all">{meta.url}</CardDescription>
+            <CardDescription className="break-all">{meta.title ?? meta.url}</CardDescription>
           </CardHeader>
           <CardContent>
+            {isYouTubeMeta && meta.thumbnail && (
+              <div className="mb-6 overflow-hidden rounded-lg border border-border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={meta.thumbnail || '/placeholder.svg'}
+                  alt={meta.title ? `Thumbnail for ${meta.title}` : 'Video thumbnail'}
+                  className="w-full object-cover"
+                  crossOrigin="anonymous"
+                />
+              </div>
+            )}
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
               <div className="flex items-center justify-between sm:block">
                 <dt className="text-muted-foreground">Filename</dt>
                 <dd className="font-code font-medium break-all sm:mt-1">{meta.filename}</dd>
               </div>
+              {isYouTubeMeta && meta.author && (
+                <div className="flex items-center justify-between sm:block">
+                  <dt className="text-muted-foreground flex items-center gap-1">
+                    <User className="size-3" /> Channel
+                  </dt>
+                  <dd className="font-medium sm:mt-1">{meta.author}</dd>
+                </div>
+              )}
+              {isYouTubeMeta && (
+                <div className="flex items-center justify-between sm:block">
+                  <dt className="text-muted-foreground flex items-center gap-1">
+                    <Clock className="size-3" /> Duration
+                  </dt>
+                  <dd className="font-code font-medium sm:mt-1">{formatDuration(meta.lengthSeconds)}</dd>
+                </div>
+              )}
+              {isYouTubeMeta && meta.qualityLabel && (
+                <div className="flex items-center justify-between sm:block">
+                  <dt className="text-muted-foreground">Quality</dt>
+                  <dd className="font-code font-medium sm:mt-1">{meta.qualityLabel}</dd>
+                </div>
+              )}
               <div className="flex items-center justify-between sm:block">
                 <dt className="text-muted-foreground">Content Type</dt>
                 <dd className="font-code font-medium sm:mt-1">{meta.contentType}</dd>
@@ -181,10 +282,6 @@ export function VideoVaultClient() {
               <div className="flex items-center justify-between sm:block">
                 <dt className="text-muted-foreground">Size</dt>
                 <dd className="font-code font-medium sm:mt-1">{formatBytes(meta.sizeBytes)}</dd>
-              </div>
-              <div className="flex items-center justify-between sm:block">
-                <dt className="text-muted-foreground">Detected Video</dt>
-                <dd className="font-code font-medium sm:mt-1">{meta.isVideo ? 'Yes' : 'Uncertain'}</dd>
               </div>
             </dl>
             {!meta.downloadable && (

@@ -1,7 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
+import ytdl from '@distube/ytdl-core';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 300;
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// Build an optional ytdl agent from a raw Cookie header string (e.g. copied from a
+// logged-in browser session). YouTube blocks anonymous datacenter requests with a
+// "Sign in to confirm you're not a bot" error; supplying cookies bypasses that, the
+// same way `yt-dlp --cookies` does.
+function buildAgent(cookieHeader?: string | null) {
+  if (!cookieHeader || !cookieHeader.trim()) return undefined;
+  try {
+    const cookies = cookieHeader
+      .split(';')
+      .map((pair) => {
+        const idx = pair.indexOf('=');
+        if (idx === -1) return null;
+        const name = pair.slice(0, idx).trim();
+        const value = pair.slice(idx + 1).trim();
+        if (!name) return null;
+        return { name, value, domain: '.youtube.com', path: '/' };
+      })
+      .filter(Boolean) as { name: string; value: string; domain: string; path: string }[];
+    if (cookies.length === 0) return undefined;
+    return ytdl.createAgent(cookies);
+  } catch (error) {
+    console.error('[VideoVault] Failed to build cookie agent:', error);
+    return undefined;
+  }
+}
 
 // Validate that a string is a usable http(s) URL
 function isValidHttpUrl(value: string): boolean {
@@ -80,6 +110,95 @@ function fixExtension(name: string, realExt: string | null): string {
   return `${base}.${realExt}`;
 }
 
+// Turn an arbitrary title into a filesystem-safe filename.
+function sanitizeTitle(title: string): string {
+  return (
+    title
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 150) || 'video'
+  );
+}
+
+// ---------------------------------------------------------------------------
+// YouTube handling (replicates the yt-dlp behavior from the original app.py)
+// ---------------------------------------------------------------------------
+
+async function youtubeMeta(url: string, agent?: ReturnType<typeof ytdl.createAgent>): Promise<NextResponse> {
+  const info = await ytdl.getInfo(url, { agent, requestOptions: { headers: { 'User-Agent': BROWSER_UA } } });
+  const { videoDetails } = info;
+
+  // Prefer a progressive (muxed audio+video) mp4 so the file is immediately playable.
+  const progressive = info.formats.filter((f) => f.hasAudio && f.hasVideo);
+  const best = progressive.sort((a, b) => (b.height ?? 0) - (a.height ?? 0))[0];
+
+  const lengthSeconds = Number(videoDetails.lengthSeconds) || null;
+  const sizeBytes = best?.contentLength ? Number(best.contentLength) : null;
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      url,
+      source: 'youtube',
+      filename: `${sanitizeTitle(videoDetails.title)}.mp4`,
+      title: videoDetails.title,
+      author: videoDetails.author?.name ?? null,
+      lengthSeconds,
+      thumbnail: videoDetails.thumbnails?.at(-1)?.url ?? null,
+      contentType: 'video/mp4',
+      sizeBytes,
+      qualityLabel: best?.qualityLabel ?? null,
+      isVideo: true,
+      isMedia: true,
+      isHtml: false,
+      downloadable: true,
+      supportsRange: true,
+    },
+  });
+}
+
+async function youtubeDownload(url: string, agent?: ReturnType<typeof ytdl.createAgent>): Promise<Response> {
+  // Resolve metadata first so we can set an accurate filename header, and so we can
+  // pick the best progressive (muxed audio+video) mp4 — guaranteeing a playable file.
+  const info = await ytdl.getInfo(url, { agent, requestOptions: { headers: { 'User-Agent': BROWSER_UA } } });
+  const filename = `${sanitizeTitle(info.videoDetails.title)}.mp4`;
+
+  const nodeStream = ytdl.downloadFromInfo(info, {
+    quality: 'highest',
+    filter: (f) => f.hasAudio && f.hasVideo && f.container === 'mp4',
+    agent,
+    requestOptions: { headers: { 'User-Agent': BROWSER_UA } },
+  });
+
+  // Bridge the Node Readable to a Web ReadableStream for the Response.
+  const webStream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      nodeStream.on('data', (chunk: Buffer) => controller.enqueue(new Uint8Array(chunk)));
+      nodeStream.on('end', () => controller.close());
+      nodeStream.on('error', (err: Error) => {
+        console.error('[VideoVault] YouTube stream error:', err);
+        controller.error(err);
+      });
+    },
+    cancel() {
+      nodeStream.destroy();
+    },
+  });
+
+  return new Response(webStream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'video/mp4',
+      'Content-Disposition': `attachment; filename="${filename.replace(/"/g, '')}"`,
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Route handlers
+// ---------------------------------------------------------------------------
+
 // HEAD-style metadata probe so the client can preview details before downloading
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const target = request.nextUrl.searchParams.get('url');
@@ -88,13 +207,33 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: 'A valid http(s) URL is required.' }, { status: 400 });
   }
 
+  // YouTube links are extracted with ytdl-core, not a plain HTTP probe.
+  if (ytdl.validateURL(target)) {
+    try {
+      const agent = buildAgent(request.nextUrl.searchParams.get('cookies'));
+      return await youtubeMeta(target, agent);
+    } catch (error) {
+      console.error('[VideoVault] YouTube probe error:', error);
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            error instanceof Error
+              ? `Could not read this YouTube video: ${error.message}`
+              : 'Could not read this YouTube video.',
+        },
+        { status: 502 }
+      );
+    }
+  }
+
   try {
     const probe = await fetch(target, {
       method: 'GET',
       headers: {
         // Request only the first byte to inspect headers cheaply
         Range: 'bytes=0-0',
-        'User-Agent': 'Mozilla/5.0 (compatible; PenQuest-VideoVault/1.0)',
+        'User-Agent': BROWSER_UA,
       },
     });
 
@@ -120,6 +259,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       success: true,
       data: {
         url: target,
+        source: 'direct',
         filename,
         contentType: contentType ?? 'unknown',
         sizeBytes: totalBytes,
@@ -140,19 +280,39 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 }
 
-// Streaming proxy download — pipes the remote video to the browser as an attachment
+// Streaming download — handles YouTube via ytdl-core, otherwise proxies the remote file.
 export async function POST(request: NextRequest): Promise<Response> {
   try {
-    const { url, filename } = await request.json();
+    const { url, filename, cookies } = await request.json();
 
     if (!url || !isValidHttpUrl(url)) {
       return NextResponse.json({ success: false, error: 'A valid http(s) URL is required.' }, { status: 400 });
     }
 
+    // YouTube: extract and stream the muxed mp4.
+    if (ytdl.validateURL(url)) {
+      try {
+        const agent = buildAgent(cookies);
+        return await youtubeDownload(url, agent);
+      } catch (error) {
+        console.error('[VideoVault] YouTube download error:', error);
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              error instanceof Error
+                ? `YouTube download failed: ${error.message}`
+                : 'YouTube download failed.',
+          },
+          { status: 502 }
+        );
+      }
+    }
+
     const upstream = await fetch(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; PenQuest-VideoVault/1.0)',
+        'User-Agent': BROWSER_UA,
       },
     });
 
@@ -165,7 +325,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
 
-    // Guard against saving an HTML page (e.g. a YouTube/social "watch" page) as a video file.
+    // Guard against saving an HTML page (e.g. a non-YouTube social "watch" page) as a video file.
     // A simple proxy cannot extract the underlying stream from those pages, so the result
     // would be an unplayable file. Fail loudly with guidance instead.
     if (contentType.includes('text/html')) {
@@ -173,7 +333,7 @@ export async function POST(request: NextRequest): Promise<Response> {
         {
           success: false,
           error:
-            'That URL returns a web page, not a video file. Video Vault downloads direct media links (URLs that point straight at an .mp4/.webm/.mov file). Pages like YouTube or social posts hide the real stream behind a player and require a dedicated extractor (yt-dlp), which is not available in this environment.',
+            'That URL returns a web page, not a video file. Video Vault downloads YouTube links and direct media links (URLs that point straight at an .mp4/.webm/.mov file). Other social sites hide the real stream behind a player and are not supported.',
         },
         { status: 415 }
       );
