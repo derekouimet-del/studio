@@ -18,6 +18,7 @@ import {
   Search,
   Network,
   ShieldAlert,
+  Video,
 } from 'lucide-react';
 import { CVEStatsCards } from '@/components/dashboard/cve-stats-cards';
 
@@ -69,6 +70,12 @@ const tools = [
     icon: ShieldAlert,
     label: 'Breach Inspector',
     description: 'Check password strength and generate themed wordlists.',
+  },
+  {
+    href: '/video-vault',
+    icon: Video,
+    label: 'Video Vault',
+    description: 'Download video files from direct media URLs to your device.',
   },
 ];
 
