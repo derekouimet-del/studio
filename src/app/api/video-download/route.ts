@@ -166,8 +166,36 @@ function sanitizeTitle(title: string): string {
 // YouTube handling (replicates the yt-dlp behavior from the original app.py)
 // ---------------------------------------------------------------------------
 
+// Turn a raw ytdl error into actionable guidance for the user.
+function explainYoutubeError(error: unknown, hasCookies: boolean): string {
+  const msg = error instanceof Error ? error.message : String(error);
+  const lower = msg.toLowerCase();
+
+  if (lower.includes('age') || lower.includes('sign in to confirm your age') || lower.includes('inappropriate')) {
+    return hasCookies
+      ? 'This video is age-restricted. YouTube only releases it to an account that is logged in AND age-verified. Make sure the cookies you pasted are from such an account (and are fresh). Age-restricted videos are blocked far more aggressively from servers, so this can still fail even with valid cookies.'
+      : 'This video is age-restricted. You must paste cookies from a logged-in, age-verified YouTube account in the "YouTube cookies" panel below to download it.';
+  }
+  if (lower.includes('bot') || lower.includes('sign in to confirm')) {
+    return hasCookies
+      ? 'YouTube is still treating this request as a bot even with cookies. The cookies may be expired or from a different session — re-copy fresh cookies while logged in and try again.'
+      : 'YouTube blocked this request as an unverified bot. Paste your logged-in cookies in the "YouTube cookies" panel below to bypass it.';
+  }
+  if (lower.includes('private')) {
+    return 'This video is private and cannot be downloaded.';
+  }
+  if (lower.includes('unavailable') || lower.includes('not available')) {
+    return 'This video is unavailable (it may be removed, region-locked, or members-only).';
+  }
+  return `Could not read this YouTube video: ${msg}`;
+}
+
 async function youtubeMeta(url: string, agent?: ReturnType<typeof ytdl.createAgent>): Promise<NextResponse> {
-  const info = await ytdl.getInfo(url, { agent, requestOptions: { headers: { 'User-Agent': BROWSER_UA } } });
+  const info = await ytdl.getInfo(url, {
+    agent,
+    playerClients: ['TV', 'WEB_EMBEDDED', 'IOS', 'ANDROID', 'WEB'],
+    requestOptions: { headers: { 'User-Agent': BROWSER_UA } },
+  });
   const { videoDetails } = info;
 
   // Prefer a progressive (muxed audio+video) mp4 so the file is immediately playable.
@@ -202,7 +230,13 @@ async function youtubeMeta(url: string, agent?: ReturnType<typeof ytdl.createAge
 async function youtubeDownload(url: string, agent?: ReturnType<typeof ytdl.createAgent>): Promise<Response> {
   // Resolve metadata first so we can set an accurate filename header, and so we can
   // pick the best progressive (muxed audio+video) mp4 — guaranteeing a playable file.
-  const info = await ytdl.getInfo(url, { agent, requestOptions: { headers: { 'User-Agent': BROWSER_UA } } });
+  // The "TV" and "WEB_EMBEDDED" player clients are the ones most likely to bypass an
+  // age-restriction gate, so we list them first.
+  const info = await ytdl.getInfo(url, {
+    agent,
+    playerClients: ['TV', 'WEB_EMBEDDED', 'IOS', 'ANDROID', 'WEB'],
+    requestOptions: { headers: { 'User-Agent': BROWSER_UA } },
+  });
   const filename = `${sanitizeTitle(info.videoDetails.title)}.mp4`;
 
   const nodeStream = ytdl.downloadFromInfo(info, {
@@ -251,17 +285,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // YouTube links are extracted with ytdl-core, not a plain HTTP probe.
   if (ytdl.validateURL(target)) {
     try {
-      const agent = buildAgent(request.nextUrl.searchParams.get('cookies'));
+      const cookiesParam = request.nextUrl.searchParams.get('cookies');
+      const agent = buildAgent(cookiesParam);
       return await youtubeMeta(target, agent);
     } catch (error) {
       console.error('[VideoVault] YouTube probe error:', error);
       return NextResponse.json(
         {
           success: false,
-          error:
-            error instanceof Error
-              ? `Could not read this YouTube video: ${error.message}`
-              : 'Could not read this YouTube video.',
+          error: explainYoutubeError(error, !!request.nextUrl.searchParams.get('cookies')),
         },
         { status: 502 }
       );
@@ -338,13 +370,7 @@ export async function POST(request: NextRequest): Promise<Response> {
       } catch (error) {
         console.error('[VideoVault] YouTube download error:', error);
         return NextResponse.json(
-          {
-            success: false,
-            error:
-              error instanceof Error
-                ? `YouTube download failed: ${error.message}`
-                : 'YouTube download failed.',
-          },
+          { success: false, error: explainYoutubeError(error, !!cookies) },
           { status: 502 }
         );
       }
