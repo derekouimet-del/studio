@@ -19,6 +19,7 @@ export const TOOL_METADATA: Record<string, { name: string; icon: string }> = {
   'recon-graph': { name: 'Recon Graph', icon: 'Network' },
   'attack-surface': { name: 'Attack Surface', icon: 'Globe' },
   'fofa': { name: 'FofaForge', icon: 'Search' },
+  'shodan': { name: 'ShodanForge', icon: 'Telescope' },
   'scan': { name: 'Network Scan', icon: 'ScanLine' },
   'crawl': { name: 'Web Crawler', icon: 'Bot' },
   'wordforge': { name: 'WordForge', icon: 'Hammer' },

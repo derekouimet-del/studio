@@ -20,6 +20,7 @@ import { dataSieve, type DataSieveInput } from '@/ai/flows/data-sieve';
 import { networkScan, type NetworkScanInput } from '@/ai/flows/network-scan';
 import { getLatestVulnerabilities, type CVEMonitorOutput } from '@/ai/flows/cve-monitor';
 import { fofaSuggestion, type FofaSuggestionInput } from '@/ai/flows/fofa-suggestion';
+import { shodanSuggestion, type ShodanSuggestionInput } from '@/ai/flows/shodan-suggestion';
 import { kaliForge, type KaliForgeInput } from '@/ai/flows/kali-forge';
 import { portForwardTest, type PortForwardTestInput } from '@/ai/flows/port-forward-test';
 import { oracle, type OracleInput } from '@/ai/flows/oracle';
@@ -215,6 +216,16 @@ export async function fofaSuggestionAction(input: FofaSuggestionInput) {
     } catch (error) {
         console.error('FOFA suggestion failed:', error);
         return { success: false, error: 'An error occurred while generating the FOFA query.' };
+    }
+}
+
+export async function shodanSuggestionAction(input: ShodanSuggestionInput) {
+    try {
+        const result = await shodanSuggestion(input);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Shodan suggestion failed:', error);
+        return { success: false, error: 'An error occurred while generating the Shodan query.' };
     }
 }
 

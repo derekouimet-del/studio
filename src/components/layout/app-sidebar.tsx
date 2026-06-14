@@ -30,6 +30,7 @@ import {
   Bug,
   User,
   Video,
+  Telescope,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -49,6 +50,7 @@ const navItems = [
   { href: '/port-forward', icon: ArrowRightLeft, label: 'Port Forward Test' },
   { href: '/scanweaver', icon: TerminalSquare, label: 'ScanWeaver' },
   { href: '/fofa', icon: Search, label: 'FofaForge' },
+  { href: '/shodan', icon: Telescope, label: 'ShodanForge' },
   { href: '/kali-forge', icon: TerminalSquare, label: 'Kali Forge' },
   { href: '/crawl', icon: Bot, label: 'Web Crawler' },
   { href: '/google-recon', icon: FileSearch, label: 'Google Recon' },

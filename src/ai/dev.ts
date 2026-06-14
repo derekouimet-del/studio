@@ -20,3 +20,4 @@ import '@/ai/flows/data-sieve.ts';
 import '@/ai/flows/network-scan.ts';
 import '@/ai/flows/cve-monitor.ts';
 import '@/ai/flows/fofa-suggestion.ts';
+import '@/ai/flows/shodan-suggestion.ts';
