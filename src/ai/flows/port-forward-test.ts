@@ -67,15 +67,21 @@ export async function portForwardTest(input: PortForwardTestInput): Promise<Port
   console.log('[v0] SCANNER_API_URL is set:', SCANNER_API_URL);
 
   try {
-    const response = await fetch(`${SCANNER_API_URL}/port-check`, {
+    // The scanner service exposes an nmap-backed `/scan` endpoint (there is no
+    // dedicated `/port-check` route). We reuse `/scan` with an explicit port
+    // list and `skip_ping` enabled so port-forwarded hosts that block ICMP are
+    // still probed, then transform the nmap response into our result shape.
+    const response = await fetch(`${SCANNER_API_URL}/scan`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        host,
-        ports: portList,
-        protocol,
-        timeout,
-        grab_banner: grabBanner,
+        target: host,
+        ports: portList.join(','),
+        scan_type: 'custom',
+        // Don't require the host to answer pings (typical for NAT/port-forward checks).
+        skip_ping: true,
+        // Grabbing banners maps to nmap service/version detection.
+        service_detection: grabBanner,
       }),
     });
 
@@ -91,24 +97,46 @@ export async function portForwardTest(input: PortForwardTestInput): Promise<Port
       throw new Error(data.error || 'Port test failed');
     }
 
-    const results: PortForwardTestResult[] = (data.data?.results || []).map((r: any) => ({
-      port: Number(r.port),
-      protocol: r.protocol || 'tcp',
-      status: r.status || 'closed',
-      responseTime: r.response_time,
-      banner: r.banner,
-      service: r.service,
-    }));
+    // The scanner returns data.data.hosts[].ports[] from parsed nmap output.
+    const hosts: any[] = data.data?.hosts || [];
+    const firstHost = hosts[0];
+    const scannedPorts: any[] = hosts.flatMap((h: any) => h.ports || []);
+
+    // Build a lookup of nmap results keyed by port number.
+    const byPort = new Map<number, any>();
+    for (const p of scannedPorts) {
+      byPort.set(Number(p.port), p);
+    }
+
+    // Map every requested port so the UI always shows the full set.
+    const results: PortForwardTestResult[] = portList.map((port) => {
+      const p = byPort.get(port);
+      const requestedProto: 'tcp' | 'udp' = protocol === 'udp' ? 'udp' : 'tcp';
+
+      if (!p) {
+        // nmap did not report this port -> treat as closed.
+        return { port, protocol: requestedProto, status: 'closed' };
+      }
+
+      const banner = [p.service, p.version].filter(Boolean).join(' ').trim();
+
+      return {
+        port,
+        protocol: (p.protocol as 'tcp' | 'udp') || requestedProto,
+        status: mapNmapState(p.state),
+        banner: grabBanner && banner ? banner : undefined,
+        service: p.service && p.service !== 'unknown' ? p.service : undefined,
+      };
+    });
 
     const summary = calculateSummary(results);
 
     return {
       host,
-      resolvedIp: data.data?.resolved_ip,
+      resolvedIp: firstHost?.ip || firstHost?.hostname,
       results,
       summary,
       testTime: Date.now() - startTime,
-      externalIp: data.data?.external_ip,
     };
   } catch (error) {
     console.error('[PortForwardTest] Error calling scanner service:', error);
@@ -144,6 +172,21 @@ function parsePorts(portsStr: string): number[] {
   }
   
   return [...new Set(ports)]; // Remove duplicates
+}
+
+function mapNmapState(state?: string): PortForwardTestResult['status'] {
+  switch ((state || '').toLowerCase()) {
+    case 'open':
+      return 'open';
+    case 'filtered':
+    case 'open|filtered':
+    case 'closed|filtered':
+      return 'filtered';
+    case 'closed':
+      return 'closed';
+    default:
+      return 'closed';
+  }
 }
 
 function calculateSummary(results: PortForwardTestResult[]) {

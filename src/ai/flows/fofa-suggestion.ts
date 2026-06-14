@@ -166,7 +166,7 @@ User's new message:
 - **user**: ${input.message}`;
 
   const { object } = await generateObject({
-    model: 'google/gemini-2.0-flash' as any,
+    model: 'openai/gpt-4o-mini',
     schema: FofaSuggestionOutputSchema,
     prompt,
   });

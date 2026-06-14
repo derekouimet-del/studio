@@ -19,6 +19,7 @@ import {
   Network,
   ShieldAlert,
   Video,
+  Telescope,
 } from 'lucide-react';
 import { CVEStatsCards } from '@/components/dashboard/cve-stats-cards';
 
@@ -40,6 +41,12 @@ const tools = [
     icon: Search,
     label: 'FofaForge',
     description: 'Build specialized FOFA queries using natural language.',
+  },
+  {
+    href: '/shodan',
+    icon: Telescope,
+    label: 'ShodanForge',
+    description: 'Build specialized Shodan queries using natural language.',
   },
   {
     href: '/scan',
