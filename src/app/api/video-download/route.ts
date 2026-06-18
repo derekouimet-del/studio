@@ -108,10 +108,21 @@ export async function POST(request: NextRequest): Promise<Response> {
       return NextResponse.json({ success: false, error: 'A valid http(s) URL is required.' }, { status: 400 });
     }
 
+    let originReferer: string | undefined;
+    try {
+      originReferer = new URL(url).origin;
+    } catch {
+      originReferer = undefined;
+    }
+
     const upstream = await fetch(url, {
       method: 'GET',
+      redirect: 'follow',
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; PenQuest-VideoVault/1.0)',
+        Accept: '*/*',
+        // Some media hosts reject requests without a same-origin referer
+        ...(originReferer ? { Referer: originReferer } : {}),
       },
     });
 
@@ -123,6 +134,20 @@ export async function POST(request: NextRequest): Promise<Response> {
     }
 
     const contentType = upstream.headers.get('content-type') ?? 'application/octet-stream';
+
+    // Guard against saving non-media (e.g. an HTML error/landing page) as a video file,
+    // which would otherwise produce a "corrupt" download.
+    if (/^(text\/html|application\/xhtml\+xml|text\/plain)/i.test(contentType)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'The URL did not return a direct video file (it returned a web page). This downloader only supports direct media links, not streaming/player pages.',
+        },
+        { status: 415 }
+      );
+    }
+
     const finalName = (typeof filename === 'string' && filename.trim())
       ? filename.trim()
       : deriveFilename(url, upstream.headers.get('content-disposition'), contentType);
@@ -130,8 +155,18 @@ export async function POST(request: NextRequest): Promise<Response> {
     const headers = new Headers();
     headers.set('Content-Type', contentType);
     headers.set('Content-Disposition', `attachment; filename="${finalName.replace(/"/g, '')}"`);
-    const len = upstream.headers.get('content-length');
-    if (len) headers.set('Content-Length', len);
+    headers.set('Cache-Control', 'no-store');
+
+    // IMPORTANT: Do NOT forward the upstream Content-Length.
+    // `fetch` transparently decompresses gzip/br responses, but the upstream
+    // Content-Length reflects the *compressed* size. Forwarding it causes the
+    // browser to truncate the download early, producing a corrupt file.
+    // Only set it when we are certain the body is not transformed.
+    const upstreamEncoding = upstream.headers.get('content-encoding');
+    const upstreamLength = upstream.headers.get('content-length');
+    if (upstreamLength && !upstreamEncoding) {
+      headers.set('Content-Length', upstreamLength);
+    }
 
     return new Response(upstream.body, { status: 200, headers });
   } catch (error) {
