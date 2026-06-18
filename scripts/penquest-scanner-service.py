@@ -12,11 +12,16 @@ Capabilities:
   - CVE matching via local database
 
 Setup:
-  1. Install dependencies: pip3 install flask flask-cors requests dnspython
-  2. Install tools: sudo apt install nmap subfinder amass
+  1. Install dependencies: pip3 install flask flask-cors requests dnspython yt-dlp
+  2. Install tools: sudo apt install nmap subfinder amass ffmpeg
   3. Run: python3 penquest-scanner-service.py --port 11435
   4. Port forward 11435 through your router/firewall
   5. Set SCANNER_API_URL=http://your-server:11435 in PenQuest
+
+Video Vault:
+  - /video-info and /video-download use yt-dlp (+ ffmpeg for muxing).
+  - These extract real media from sites like YouTube that don't expose direct file links.
+  - Only download content you own or have the rights to.
 
 Security Notes:
   - This service executes system commands - only expose to trusted networks
@@ -27,6 +32,9 @@ Security Notes:
 import subprocess
 import json
 import re
+import os
+import shutil
+import tempfile
 import argparse
 import time
 import socket
@@ -35,7 +43,7 @@ import threading
 from datetime import datetime
 from functools import wraps
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file, after_this_request
 from flask_cors import CORS
 
 try:
@@ -1072,6 +1080,181 @@ def kali_tools():
     })
 
 
+# ============================================================
+# Video Vault — yt-dlp powered media extraction & download
+# ============================================================
+
+def _ytdlp_available() -> bool:
+    return shutil.which('yt-dlp') is not None
+
+
+def validate_video_url(url: str) -> str:
+    """Validate a video URL before handing it to yt-dlp."""
+    if not isinstance(url, str) or not url.strip():
+        raise ValueError("Missing 'url'")
+    url = url.strip()
+    if not re.match(r'^https?://', url, re.IGNORECASE):
+        raise ValueError("URL must start with http:// or https://")
+    # Disallow obvious local/SSRF targets
+    lowered = url.lower()
+    blocked = ['localhost', '127.0.0.1', '0.0.0.0', '::1', '169.254.169.254']
+    if any(b in lowered for b in blocked):
+        raise ValueError("That host is not allowed")
+    return url
+
+
+@app.route('/video-info', methods=['POST'])
+@check_api_key
+@rate_limit
+def video_info():
+    """
+    Probe a video URL with yt-dlp and return metadata + available formats.
+
+    POST body (JSON): { "url": "https://www.youtube.com/watch?v=..." }
+    """
+    if not _ytdlp_available():
+        return jsonify({
+            "success": False,
+            "error": "yt-dlp is not installed on the scanner host. Run: pip3 install yt-dlp"
+        }), 503
+
+    try:
+        data = request.get_json(silent=True) or {}
+        url = validate_video_url(data.get('url', ''))
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    try:
+        result = subprocess.run(
+            ['yt-dlp', '-J', '--no-warnings', '--no-playlist', url],
+            capture_output=True, text=True, timeout=90
+        )
+        if result.returncode != 0:
+            return jsonify({
+                "success": False,
+                "error": (result.stderr.strip().split('\n')[-1] if result.stderr else 'yt-dlp failed to read this URL')
+            }), 502
+
+        info = json.loads(result.stdout)
+
+        formats = []
+        for f in info.get('formats', []):
+            # Only surface formats that actually have a usable container
+            if not f.get('format_id'):
+                continue
+            has_video = f.get('vcodec') and f.get('vcodec') != 'none'
+            has_audio = f.get('acodec') and f.get('acodec') != 'none'
+            formats.append({
+                "format_id": f.get('format_id'),
+                "ext": f.get('ext'),
+                "resolution": f.get('resolution') or (f"{f.get('width')}x{f.get('height')}" if f.get('height') else None),
+                "height": f.get('height'),
+                "fps": f.get('fps'),
+                "filesize": f.get('filesize') or f.get('filesize_approx'),
+                "vcodec": f.get('vcodec'),
+                "acodec": f.get('acodec'),
+                "has_video": bool(has_video),
+                "has_audio": bool(has_audio),
+                "note": f.get('format_note'),
+            })
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "title": info.get('title'),
+                "uploader": info.get('uploader') or info.get('channel'),
+                "duration": info.get('duration'),
+                "thumbnail": info.get('thumbnail'),
+                "extractor": info.get('extractor_key') or info.get('extractor'),
+                "webpage_url": info.get('webpage_url') or url,
+                "is_live": bool(info.get('is_live')),
+                "formats": formats,
+            }
+        })
+
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "yt-dlp timed out reading this URL"}), 504
+    except json.JSONDecodeError:
+        return jsonify({"success": False, "error": "Could not parse yt-dlp output"}), 502
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Inspection error: {str(e)}"}), 500
+
+
+@app.route('/video-download', methods=['POST'])
+@check_api_key
+@rate_limit
+def video_download():
+    """
+    Download (and mux) a video with yt-dlp, then stream the finished file back.
+
+    POST body (JSON):
+    {
+        "url": "https://www.youtube.com/watch?v=...",
+        "format_id": "137+140"   # optional; defaults to best video+audio merged to mp4
+    }
+    """
+    if not _ytdlp_available():
+        return jsonify({
+            "success": False,
+            "error": "yt-dlp is not installed on the scanner host. Run: pip3 install yt-dlp"
+        }), 503
+
+    try:
+        data = request.get_json(silent=True) or {}
+        url = validate_video_url(data.get('url', ''))
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+    format_id = data.get('format_id')
+    if format_id is not None and not re.match(r'^[a-zA-Z0-9_+\-./]+$', str(format_id)):
+        return jsonify({"success": False, "error": "Invalid format_id"}), 400
+
+    tmpdir = tempfile.mkdtemp(prefix='penquest-vid-')
+
+    @after_this_request
+    def _cleanup(response):
+        try:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+        except Exception:
+            pass
+        return response
+
+    try:
+        out_tmpl = os.path.join(tmpdir, '%(title).100s.%(ext)s')
+        cmd = ['yt-dlp', '--no-playlist', '--no-warnings', '--restrict-filenames', '-o', out_tmpl]
+
+        if format_id:
+            cmd += ['-f', str(format_id)]
+        else:
+            # Best video + best audio, falling back to best single file; muxed to mp4 if ffmpeg present
+            cmd += ['-f', 'bv*+ba/b']
+        if shutil.which('ffmpeg'):
+            cmd += ['--merge-output-format', 'mp4']
+
+        cmd.append(url)
+
+        print(f"[Video Vault] Downloading: {url} (format={format_id or 'best'})")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+        if result.returncode != 0:
+            err = result.stderr.strip().split('\n')[-1] if result.stderr else 'yt-dlp failed to download this video'
+            return jsonify({"success": False, "error": err}), 502
+
+        files = [os.path.join(tmpdir, f) for f in os.listdir(tmpdir)]
+        files = [f for f in files if os.path.isfile(f)]
+        if not files:
+            return jsonify({"success": False, "error": "Download produced no output file"}), 502
+
+        # Pick the largest file (the final muxed output)
+        final = max(files, key=os.path.getsize)
+        return send_file(final, as_attachment=True, download_name=os.path.basename(final))
+
+    except subprocess.TimeoutExpired:
+        return jsonify({"success": False, "error": "Download timed out (max 10 minutes)"}), 504
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Download error: {str(e)}"}), 500
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PenQuest Scanner Service v2.0')
     parser.add_argument('--port', type=int, default=11435, help='Port to listen on (default: 11435)')
@@ -1097,6 +1280,8 @@ if __name__ == '__main__':
     print(f"║    POST /fingerprint   - Technology fingerprinting      ║")
     print(f"║    POST /kali          - Execute Kali commands          ║")
     print(f"║    GET  /kali/tools    - List allowed tools             ║")
+    print(f"║    POST /video-info    - Probe video (yt-dlp)           ║")
+    print(f"║    POST /video-download- Download video (yt-dlp)        ║")
     print(f"╚══════════════════════════════════════════════════════════╝")
     print(f"")
     print(f"[PenQuest Scanner] Starting on http://{args.host}:{args.port}")
