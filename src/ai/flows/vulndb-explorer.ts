@@ -46,12 +46,8 @@ For each vulnerability found, provide its CVE ID, a concise description, its sev
 Return a JSON object with a 'vulnerabilities' array. If no vulnerabilities are found, return an empty array.`,
   });
 
-  // Transform null metasploitModules to undefined for backward compatibility
   const result: VulnDBExplorerOutput = {
-    vulnerabilities: (output?.vulnerabilities || []).map(v => ({
-      ...v,
-      metasploitModules: v.metasploitModules || undefined,
-    })),
+    vulnerabilities: output?.vulnerabilities || [],
   };
 
   return result;

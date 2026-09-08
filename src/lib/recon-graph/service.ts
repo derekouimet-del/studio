@@ -355,7 +355,7 @@ export async function buildReconGraph(
           protocol: p.protocol as 'tcp' | 'udp',
           service: p.service,
           version: p.version,
-          state: p.state,
+          state: p.state as 'open' | 'closed' | 'filtered',
         }))
       );
       
