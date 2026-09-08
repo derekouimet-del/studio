@@ -37,27 +37,40 @@ export function ScanWeaverClient() {
 
     const historyForAI = messages.map(m => ({ role: m.role, content: m.content }));
 
-    const response = await nmapSuggestionAction({
-      history: historyForAI,
-      message: input,
-    });
+    try {
+      const response = await nmapSuggestionAction({
+        history: historyForAI,
+        message: input,
+      });
 
-    if (response.success && response.data) {
-      const modelMessage: Message = { 
-        role: 'model', 
-        content: response.data.response,
-        command: response.data.command
-      };
-      setMessages((prev) => [...prev, modelMessage]);
-    } else {
-      const errorMessage: Message = {
-        role: 'model',
-        content: "Sorry, I'm having trouble connecting right now. Please try again later.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      if (response.success && response.data) {
+        const modelMessage: Message = {
+          role: 'model',
+          content: response.data.response,
+          command: response.data.command,
+        };
+        setMessages((prev) => [...prev, modelMessage]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'model',
+            content: "Sorry, I'm having trouble connecting right now. Please try again later.",
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error('[v0] Scanweaver request failed:', error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'model',
+          content: "Sorry, I'm having trouble connecting right now. Please try again later.",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -98,7 +111,11 @@ export function ScanWeaverClient() {
                 placeholder="e.g., run a stealth scan on 192.168.1.10"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.nativeEvent.isComposing && e.keyCode !== 229 && !isLoading) {
+                    handleSend();
+                  }
+                }}
                 disabled={isLoading}
               />
               <Button onClick={handleSend} disabled={isLoading}>
