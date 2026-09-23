@@ -36,31 +36,34 @@ export function WebCrawlerClient() {
   const { toast } = useToast();
 
   const handleCrawl = async () => {
+    if (!targetUrl.trim()) {
+      toast({ variant: 'destructive', title: 'URL required', description: 'Enter a website URL to crawl.' });
+      return;
+    }
+
     setIsCrawling(true);
     setPages([]);
     setCredentials([]);
 
-    const response = await crawlWebsiteAction({ targetUrl });
+    try {
+      const response = await crawlWebsiteAction({ targetUrl: targetUrl.trim() });
 
-    if (response.success && response.data) {
-      setPages(response.data.pages || []);
-      setCredentials(response.data.credentials || []);
-      if (response.data.credentials.length > 0) {
+      if (response.success && response.data) {
+        setPages(response.data.pages || []);
+        setCredentials(response.data.credentials || []);
         toast({
-          title: 'Deep Crawl Findings',
-          description: `Found ${response.data.credentials.length} potential secrets during crawl.`,
-          variant: response.data.credentials.some(c => c.severity === 'critical') ? 'destructive' : 'default'
+          title: 'Crawl complete',
+          description: `Found ${response.data.pages.length} links and ${response.data.credentials.length} potential secrets.`,
+          variant: response.data.credentials.some(c => c.severity === 'critical') ? 'destructive' : 'default',
         });
+      } else {
+        toast({ variant: 'destructive', title: 'Crawl failed', description: response.error });
       }
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Crawl Failed',
-        description: response.error,
-      });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Crawl failed', description: error instanceof Error ? error.message : 'The crawler could not complete the request.' });
+    } finally {
+      setIsCrawling(false);
     }
-
-    setIsCrawling(false);
   };
   
   const copyToClipboard = (text: string) => {
