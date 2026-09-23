@@ -69,32 +69,44 @@ const crawlWebsiteFlow = ai.defineFlow(
   async ({ targetUrl }) => {
     let pageContent: string;
     let urlToFetch = targetUrl.trim();
+    if (!urlToFetch) throw new Error('Enter a website URL to crawl.');
     if (!urlToFetch.startsWith('http://') && !urlToFetch.startsWith('https://')) {
         urlToFetch = `https://${urlToFetch}`;
     }
 
+    let response: Response;
     try {
-        const response = await fetch(urlToFetch, { 
+        response = await fetch(urlToFetch, {
             headers: { 'User-Agent': 'Pen-Quest-Crawler/1.0' },
-            next: { revalidate: 0 }
+            cache: 'no-store',
+            signal: AbortSignal.timeout(15000),
         });
-        
-        if (!response.ok) {
-            console.error(`Failed to fetch ${urlToFetch}: ${response.status} ${response.statusText}`);
-            return { pages: [], credentials: [] };
-        }
-        
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('text/html')) {
-            console.error(`Skipping ${urlToFetch} because content-type is not text/html.`);
-            return { pages: [], credentials: [] };
-        }
-
-        pageContent = await response.text();
     } catch (e: any) {
-        console.error(`Exception while fetching ${urlToFetch}:`, e.message);
-        return { pages: [], credentials: [] };
+        throw new Error(`Could not reach ${urlToFetch}: ${e?.message || 'request failed'}`);
     }
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html')) {
+        throw new Error(`The target returned ${contentType || 'an unknown content type'}, not HTML.`);
+    }
+    pageContent = await response.text();
+
+    const rootPage = {
+      id: 'root',
+      url: urlToFetch,
+      statusCode: response.status,
+      title: pageContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || urlToFetch,
+    };
+    const discoveredPages = Array.from(pageContent.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi))
+      .map((match, index) => {
+        try {
+          const url = new URL(match[1].trim(), urlToFetch).href;
+          return { id: `link-${index}`, url, statusCode: 0, title: match[2].replace(/<[^>]+>/g, '').trim() || url };
+        } catch { return null; }
+      })
+      .filter((page): page is { id: string; url: string; statusCode: number; title: string } => Boolean(page))
+      .filter((page, index, pages) => pages.findIndex((candidate) => candidate.url === page.url) === index)
+      .slice(0, 50);
     
     // Step 1: Run the fast rule-based classifier
     const findings = classifyText(pageContent, { url: urlToFetch });
@@ -124,9 +136,9 @@ const crawlWebsiteFlow = ai.defineFlow(
     // Merge results
     const mergedCredentials = [...ruleBasedCredentials, ...(aiOutput.credentials || [])];
 
-    return { 
-      pages: aiOutput.pages || [], 
-      credentials: mergedCredentials 
+    return {
+      pages: [rootPage, ...discoveredPages].filter((page, index, pages) => pages.findIndex((candidate) => candidate.url === page.url) === index),
+      credentials: mergedCredentials,
     };
   }
 );
