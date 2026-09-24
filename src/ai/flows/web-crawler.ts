@@ -86,16 +86,20 @@ const crawlWebsiteFlow = ai.defineFlow(
     }
 
     const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) {
-        throw new Error(`The target returned ${contentType || 'an unknown content type'}, not HTML.`);
-    }
     pageContent = await response.text();
+    if (!pageContent.trim()) {
+        throw new Error(`The target returned an empty ${contentType || 'response'}.`);
+    }
 
+    const isHtml = contentType.toLowerCase().includes('text/html') || /<html\b|<body\b|<a\b/i.test(pageContent);
+    const isJson = contentType.toLowerCase().includes('json') || /^[\s\n]*[\[{]/.test(pageContent);
     const rootPage = {
       id: 'root',
       url: urlToFetch,
       statusCode: response.status,
-      title: pageContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || urlToFetch,
+      title: isHtml
+        ? pageContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || urlToFetch
+        : isJson ? `API response (${response.status})` : `${contentType || 'text'} response (${response.status})`,
     };
     const discoveredPages = Array.from(pageContent.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi))
       .map((match, index) => {

@@ -52,7 +52,10 @@ export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
     return { success: true, data: result };
   } catch (error) {
     console.error('Web crawl failed:', error);
-    return { success: false, error: 'An error occurred while crawling the website.' };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred while crawling the website.',
+    };
   }
 }
 
