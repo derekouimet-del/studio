@@ -101,8 +101,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<FofaSearc
       
       // Provide more helpful error messages for common FOFA error codes
       let errorMessage = data.errmsg || 'Unknown FOFA API error';
-      if (data.errmsg?.includes('820301') || data.errmsg?.includes('insufficient')) {
-        errorMessage = 'Insufficient FOFA credits. Your account may not have enough F-points for API queries. Please check your FOFA account balance at fofa.info.';
+      if (
+        data.errmsg?.includes('820031') ||
+        data.errmsg?.includes('820301') ||
+        data.errmsg?.includes('F点余额不足') ||
+        data.errmsg?.includes('insufficient')
+      ) {
+        errorMessage = 'Insufficient FOFA credits. This query requires more F-points than your account currently has. Check your FOFA account balance at fofa.info or use a smaller result size.';
       } else if (data.errmsg?.includes('820000') || data.errmsg?.includes('invalid')) {
         errorMessage = 'Invalid FOFA credentials. Please verify your email and API key are correct.';
       } else if (data.errmsg?.includes('820302')) {
