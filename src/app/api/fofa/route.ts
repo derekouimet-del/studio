@@ -42,7 +42,9 @@ export interface FofaSearchResponse {
 }
 
 // Fields to retrieve from FOFA
-const FOFA_FIELDS = 'host,ip,port,protocol,country,country_name,region,city,as_organization,title,domain,server';
+// `as_organization` is restricted on some FOFA plans and causes the entire
+// request to fail with 820001. Keep the default field set broadly available.
+const FOFA_FIELDS = 'host,ip,port,protocol,country,country_name,region,city,title,domain,server';
 
 export async function POST(request: NextRequest): Promise<NextResponse<FofaSearchResponse>> {
   try {
