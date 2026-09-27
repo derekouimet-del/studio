@@ -94,20 +94,6 @@ export function DataSieveClient() {
     toast({ title: 'Copied to clipboard!' });
   };
 
-  const downloadOriginalFile = () => {
-    if (!file) return;
-
-    const url = URL.createObjectURL(file);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = file.name;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-    toast({ title: 'Original file download started.' });
-  };
-
   const downloadResultsReport = () => {
     if (!results) return;
 
@@ -121,7 +107,7 @@ export function DataSieveClient() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${file?.name.replace(/\\.[^/.]+$/, '') ?? 'datasieve'}-results.json`;
+    link.download = `${file?.name.replace(/\.[^/.]+$/, '') ?? 'datasieve'}-results.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -174,10 +160,6 @@ export function DataSieveClient() {
                         <span>Loaded: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(2)} KB)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={downloadOriginalFile}>
-                        <Download data-icon="inline-start" />
-                        Download original
-                      </Button>
                       <Button variant="ghost" size="icon" onClick={resetState} aria-label="Remove selected file"><Trash2/></Button>
                     </div>
                   </div>
@@ -223,9 +205,9 @@ export function DataSieveClient() {
                     </CardTitle>
                     <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
                 </div>
-                <Button variant="outline" onClick={downloadResultsReport} disabled={!results}>
+                <Button variant="default" size="lg" onClick={downloadResultsReport} disabled={!results} className="w-full sm:w-auto">
                     <Download data-icon="inline-start" />
-                    Download results report
+                    Download full results report
                 </Button>
             </CardHeader>
             <CardContent>
