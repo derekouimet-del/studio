@@ -108,6 +108,27 @@ export function DataSieveClient() {
     toast({ title: 'Original file download started.' });
   };
 
+  const downloadResultsReport = () => {
+    if (!results) return;
+
+    const report = {
+      sourceFile: file?.name ?? 'unknown',
+      generatedAt: new Date().toISOString(),
+      totalFindings: results.length,
+      findings: results,
+    };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${file?.name.replace(/\\.[^/.]+$/, '') ?? 'datasieve'}-results.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Results report download started.' });
+  };
+
   const getSeverityBadge = (severity?: string) => {
     switch (severity) {
       case 'critical': return <Badge variant="destructive" className="bg-red-700 animate-pulse">CRITICAL</Badge>;
@@ -202,9 +223,9 @@ export function DataSieveClient() {
                     </CardTitle>
                     <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
                 </div>
-                <Button variant="outline" onClick={downloadOriginalFile} disabled={!file}>
+                <Button variant="outline" onClick={downloadResultsReport} disabled={!results}>
                     <Download data-icon="inline-start" />
-                    Download unedited file
+                    Download results report
                 </Button>
             </CardHeader>
             <CardContent>
