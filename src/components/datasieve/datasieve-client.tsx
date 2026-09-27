@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { dataSieveAction } from '@/app/actions';
-import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert } from 'lucide-react';
+import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert, Download } from 'lucide-react';
 import type { DataSieveOutput } from '@/ai/flows/data-sieve';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +92,20 @@ export function DataSieveClient() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: 'Copied to clipboard!' });
+  };
+
+  const downloadOriginalFile = () => {
+    if (!file) return;
+
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Original file download started.' });
   };
 
   const getSeverityBadge = (severity?: string) => {
@@ -175,11 +189,17 @@ export function DataSieveClient() {
 
       {results && !isLoading && (
         <Card className={cn(results.some(r => r.severity === 'critical') && "border-destructive/50")}>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Info className="text-primary"/> Analysis Results
-                </CardTitle>
-                <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
+            <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2">
+                        <Info className="text-primary"/> Analysis Results
+                    </CardTitle>
+                    <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
+                </div>
+                <Button variant="outline" onClick={downloadOriginalFile} disabled={!file}>
+                    <Download data-icon="inline-start" />
+                    Download unedited file
+                </Button>
             </CardHeader>
             <CardContent>
                 <Table>
