@@ -15,6 +15,7 @@ import { classifyText } from '@/lib/secret-classifier';
 
 const DataSieveInputSchema = z.object({
   content: z.string().describe('The text content to analyze.'),
+  includeAi: z.boolean().optional().default(true).describe('Whether to run the slower nuanced AI pass.'),
 });
 export type DataSieveInput = z.infer<typeof DataSieveInputSchema>;
 
@@ -68,7 +69,7 @@ const dataSieveFlow = ai.defineFlow(
     inputSchema: DataSieveInputSchema,
     outputSchema: DataSieveOutputSchema,
   },
-  async ({ content }) => {
+  async ({ content, includeAi = true }) => {
     // Pass 1: Fast Rule-Based Classification (handles full content efficiently)
     const ruleFindings = classifyText(content);
     const rulesResults = ruleFindings.map((f, i) => ({
@@ -85,8 +86,12 @@ const dataSieveFlow = ai.defineFlow(
     const aiContent = content.length > AI_LIMIT ? content.substring(0, AI_LIMIT) : content;
     
     let aiResults: any[] = [];
+    if (!includeAi) {
+      return { foundData: rulesResults };
+    }
+
     try {
-        const { output } = await analyzeNuancedLeaksPrompt({ content: aiContent });
+        const { output } = await analyzeNuancedLeaksPrompt({ content: aiContent, includeAi: true });
         if (output?.foundData) {
             aiResults = output.foundData.map((d, i) => ({
                 ...d,

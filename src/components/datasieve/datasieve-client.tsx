@@ -32,59 +32,61 @@ export function DataSieveClient() {
   const [results, setResults] = useState<FoundData[] | null>(null);
   
   const [file, setFile] = useState<File | null>(null);
-  const [fileContent, setFileContent] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
 
   const resetState = () => {
     setIsLoading(false);
     setResults(null);
     setFile(null);
-    setFileContent(null);
+    setScanProgress(0);
   }
 
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
-    // Limit increased to 15MB to stay within the 20MB server action limit (accounting for JSON overhead)
-    if (selectedFile.size > 15 * 1024 * 1024) { 
-        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 15MB.' });
-        return;
-    }
-
     setFile(selectedFile);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFileContent(reader.result as string);
-      toast({title: `File "${selectedFile.name}" loaded.`});
-    };
-    reader.readAsText(selectedFile);
+    setResults(null);
+    setScanProgress(0);
+    toast({ title: `File "${selectedFile.name}" ready.`, description: 'Large files are scanned in memory-safe chunks.' });
   };
 
   const handleAnalyze = async () => {
-    if (!fileContent) {
-      toast({ variant: 'destructive', title: 'No file content to analyze' });
+    if (!file) {
+      toast({ variant: 'destructive', title: 'No file selected' });
       return;
     }
+
     setIsLoading(true);
     setResults(null);
+    setScanProgress(0);
+    const CHUNK_SIZE = 2 * 1024 * 1024;
+    const OVERLAP = 8 * 1024;
+    const findings = new Map<string, FoundData>();
 
-    const response = await dataSieveAction({ content: fileContent });
-
-    if (response.success && response.data) {
-        setResults(response.data.foundData);
-        if (response.data.foundData.length === 0) {
-            toast({ title: 'Analysis Complete', description: 'No sensitive data was found.' });
-        } else {
-             toast({ 
-                title: 'Deep Sieve Complete', 
-                description: `Discovered ${response.data.foundData.length} items with classification.`,
-                variant: response.data.foundData.some(d => d.severity === 'critical') ? 'destructive' : 'default'
-             });
+    try {
+      for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+        const start = Math.max(0, offset - OVERLAP);
+        const content = await file.slice(start, Math.min(file.size, offset + CHUNK_SIZE)).text();
+        const response = await dataSieveAction({ content, includeAi: offset === 0 });
+        if (!response.success || !response.data) throw new Error(response.error || 'The scan failed.');
+        for (const finding of response.data.foundData) {
+          findings.set(finding.value, finding);
         }
-    } else {
-      toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error || 'The server returned an unexpected response. The file might be too large.' });
+        setResults(Array.from(findings.values()));
+        setScanProgress(Math.min(100, Math.round((Math.min(offset + CHUNK_SIZE, file.size) / file.size) * 100)));
+      }
+      const finalResults = Array.from(findings.values());
+      toast({
+        title: 'Deep Sieve Complete',
+        description: finalResults.length ? `Discovered ${finalResults.length} items with classification.` : 'No sensitive data was found.',
+        variant: finalResults.some((item) => item.severity === 'critical') ? 'destructive' : 'default',
+      });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Analysis Failed', description: error instanceof Error ? error.message : 'The scan could not be completed.' });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
   
   const copyToClipboard = (text: string) => {
@@ -110,7 +112,7 @@ export function DataSieveClient() {
           <CardHeader>
             <CardTitle>DataSieve Pro: Deep Secret Extractor</CardTitle>
             <CardDescription>
-                Upload source code, logs, or config files. DataSieve runs a high-performance classification engine + GenAI to find every leak.
+                Upload source code, logs, or config files of any size. DataSieve streams them through a high-performance classification engine in memory-safe chunks.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -146,7 +148,17 @@ export function DataSieveClient() {
                       <p>Files are scanned for specific patterns (AWS, Google Cloud, JWT) instantly, followed by a targeted AI scan for logical credentials.</p>
                   </div>
               </div>
-              <Button onClick={handleAnalyze} disabled={isLoading || !fileContent} className="w-full h-12 text-lg">
+              {isLoading && (
+                <div className="space-y-2" aria-live="polite">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Scanning in 2 MB chunks</span><span>{scanProgress}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className="h-full bg-primary transition-all" style={{ width: `${scanProgress}%` }} />
+                  </div>
+                </div>
+              )}
+              <Button onClick={handleAnalyze} disabled={isLoading || !file} className="w-full h-12 text-lg">
                 {isLoading ? <LoaderCircle className="animate-spin" /> : <Filter />}
                 {isLoading ? 'Running Deep Sieve...' : 'Sieve Data'}
               </Button>
