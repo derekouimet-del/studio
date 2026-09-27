@@ -103,17 +103,25 @@ export function DataSieveClient() {
       totalFindings: results.length,
       findings: results,
     };
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json;charset=utf-8' });
     const url = URL.createObjectURL(blob);
+    const baseName = (file?.name ?? 'datasieve').replace(/\.[^/.]+$/, '').replace(/[^a-z0-9-_]+/gi, '-');
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${file?.name.replace(/\.[^/.]+$/, '') ?? 'datasieve'}-results.json`;
+    link.download = `${baseName || 'datasieve'}-results.json`;
+    link.style.display = 'none';
     document.body.appendChild(link);
-    link.click();
-    link.remove();
-    // Keep the object URL alive long enough for the browser download to begin.
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-    toast({ title: 'Results report download started.' });
+
+    try {
+      link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+      toast({ title: 'Results report download started.', description: 'Check your browser downloads.' });
+    } catch {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast({ title: 'Report opened in a new tab.', description: 'Use the browser save/download control to save it.' });
+    } finally {
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    }
   };
 
   const getSeverityBadge = (severity?: string) => {
