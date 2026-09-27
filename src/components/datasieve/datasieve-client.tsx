@@ -152,7 +152,13 @@ export function DataSieveClient() {
                         <FileText className="text-primary" />
                         <span>Loaded: <strong>{file.name}</strong> ({(file.size / 1024).toFixed(2)} KB)</span>
                     </div>
-                    <Button variant="ghost" size="icon" onClick={resetState}><Trash2/></Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={downloadOriginalFile}>
+                        <Download data-icon="inline-start" />
+                        Download original
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={resetState} aria-label="Remove selected file"><Trash2/></Button>
+                    </div>
                   </div>
               )}
               <div className="p-3 bg-muted/30 border rounded-lg flex items-start gap-3">
