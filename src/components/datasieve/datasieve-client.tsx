@@ -111,7 +111,8 @@ export function DataSieveClient() {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    URL.revokeObjectURL(url);
+    // Keep the object URL alive long enough for the browser download to begin.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     toast({ title: 'Results report download started.' });
   };
 
