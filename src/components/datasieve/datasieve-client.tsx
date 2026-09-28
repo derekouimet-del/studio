@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { dataSieveAction } from '@/app/actions';
-import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert } from 'lucide-react';
+import { LoaderCircle, Filter, UploadCloud, Info, Copy, FileText, Trash2, ShieldAlert, Download } from 'lucide-react';
 import type { DataSieveOutput } from '@/ai/flows/data-sieve';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -92,6 +92,28 @@ export function DataSieveClient() {
     toast({ title: 'Copied to clipboard!' });
   };
 
+  const downloadResults = () => {
+    if (!results) return;
+
+    const exportPayload = {
+      sourceFile: file?.name ?? null,
+      exportedAt: new Date().toISOString(),
+      resultCount: results.length,
+      results,
+    };
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const baseName = file?.name?.replace(/\\.[^/.]+$/, '') || 'datasieve-results';
+    link.href = url;
+    link.download = `${baseName}-unedited-results.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Results downloaded', description: 'The unedited findings were saved as JSON.' });
+  };
+
   const getSeverityBadge = (severity?: string) => {
     switch (severity) {
       case 'critical': return <Badge variant="destructive" className="bg-red-700 animate-pulse">CRITICAL</Badge>;
@@ -164,10 +186,18 @@ export function DataSieveClient() {
       {results && !isLoading && (
         <Card className={cn(results.some(r => r.severity === 'critical') && "border-destructive/50")}>
             <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Info className="text-primary"/> Analysis Results
-                </CardTitle>
-                <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Info className="text-primary"/> Analysis Results
+                        </CardTitle>
+                        <CardDescription>Found {results.length} piece(s) of potentially sensitive information.</CardDescription>
+                    </div>
+                    <Button variant="outline" onClick={downloadResults} className="shrink-0">
+                        <Download className="size-4" />
+                        Download unedited results
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
