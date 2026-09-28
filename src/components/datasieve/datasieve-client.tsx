@@ -45,9 +45,8 @@ export function DataSieveClient() {
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
-    // Keep the client limit below the 50 MB server-action limit configured in next.config.ts.
-    if (selectedFile.size > 40 * 1024 * 1024) {
-        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 40MB.' });
+    if (selectedFile.size > 100 * 1024 * 1024) {
+        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 100MB.' });
         return;
     }
 
@@ -68,21 +67,38 @@ export function DataSieveClient() {
     setIsLoading(true);
     setResults(null);
 
-    const response = await dataSieveAction({ content: fileContent });
+    // Keep each server-action payload below platform request limits while allowing
+    // larger files to be analyzed as one scan.
+    const chunkSize = 5 * 1024 * 1024;
+    const chunks = [];
+    for (let offset = 0; offset < fileContent.length; offset += chunkSize) {
+      chunks.push(fileContent.slice(offset, offset + chunkSize));
+    }
 
-    if (response.success && response.data) {
-        setResults(response.data.foundData);
-        if (response.data.foundData.length === 0) {
-            toast({ title: 'Analysis Complete', description: 'No sensitive data was found.' });
-        } else {
-             toast({ 
-                title: 'Deep Sieve Complete', 
-                description: `Discovered ${response.data.foundData.length} items with classification.`,
-                variant: response.data.foundData.some(d => d.severity === 'critical') ? 'destructive' : 'default'
-             });
-        }
+    const findings: FoundData[] = [];
+    for (const chunk of chunks) {
+      const response = await dataSieveAction({ content: chunk });
+      if (!response.success || !response.data) {
+        toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error || 'The server returned an unexpected response.' });
+        setIsLoading(false);
+        return;
+      }
+      findings.push(...response.data.foundData);
+    }
+
+    const uniqueFindings = findings.filter((finding, index, all) =>
+      index === all.findIndex((other) => other.type === finding.type && other.value === finding.value),
+    );
+    setResults(uniqueFindings);
+
+    if (uniqueFindings.length === 0) {
+      toast({ title: 'Analysis Complete', description: 'No sensitive data was found.' });
     } else {
-      toast({ variant: 'destructive', title: 'Analysis Failed', description: response.error || 'The server returned an unexpected response. The file might be too large.' });
+      toast({
+        title: 'Deep Sieve Complete',
+        description: `Discovered ${uniqueFindings.length} items with classification.`,
+        variant: uniqueFindings.some((finding) => finding.severity === 'critical') ? 'destructive' : 'default',
+      });
     }
     setIsLoading(false);
   };
