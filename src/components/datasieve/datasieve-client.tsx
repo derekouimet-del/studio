@@ -45,9 +45,9 @@ export function DataSieveClient() {
   const handleFileChange = (selectedFile: File | null) => {
     if (!selectedFile) return;
 
-    // Limit increased to 15MB to stay within the 20MB server action limit (accounting for JSON overhead)
-    if (selectedFile.size > 15 * 1024 * 1024) { 
-        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 15MB.' });
+    // Keep the client limit below the 50 MB server-action limit configured in next.config.ts.
+    if (selectedFile.size > 40 * 1024 * 1024) {
+        toast({ variant: 'destructive', title: 'File Too Large', description: 'Please upload files smaller than 40MB.' });
         return;
     }
 
