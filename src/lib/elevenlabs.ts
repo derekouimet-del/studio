@@ -33,10 +33,13 @@ export interface VoiceCloneOptions {
 }
 
 function getApiKey(): string {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  const configuredKey = process.env.ELEVENLABS_API_KEY?.trim();
+  const apiKey = configuredKey?.replace(/^['"]|['"]$/g, '').trim();
+
   if (!apiKey) {
     throw new Error('ELEVENLABS_API_KEY environment variable is not set');
   }
+
   return apiKey;
 }
 
