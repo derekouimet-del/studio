@@ -40,6 +40,12 @@ function getApiKey(): string {
     throw new Error('ELEVENLABS_API_KEY environment variable is not set');
   }
 
+  if (!apiKey.startsWith('sk_')) {
+    throw new Error(
+      'ELEVENLABS_API_KEY is invalid: the project variable contains an ElevenLabs API key ID, not the secret key. Replace it with the full secret value beginning with sk_.',
+    );
+  }
+
   return apiKey;
 }
 
