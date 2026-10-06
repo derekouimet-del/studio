@@ -52,7 +52,8 @@ export async function crawlWebsiteAction(input: CrawlWebsiteInput) {
     return { success: true, data: result };
   } catch (error) {
     console.error('Web crawl failed:', error);
-    return { success: false, error: 'An error occurred while crawling the website.' };
+    const message = error instanceof Error ? error.message : 'The crawler could not reach the target.';
+    return { success: false, error: message };
   }
 }
 
