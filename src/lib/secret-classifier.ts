@@ -116,6 +116,14 @@ const rules: Rule[] = [
     reason: "Bearer auth token detected.",
     tags: ["auth", "bearer"],
   },
+  { id: "github-token", type: "GitHub Personal Access Token", category: "credential", severity: "critical", confidence: 0.98, pattern: /\b((?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,})\b/, reason: "GitHub token detected.", tags: ["github", "token"] },
+  { id: "stripe-live", type: "Stripe Live Key", category: "key", severity: "critical", confidence: 0.99, pattern: /\b((?:sk|pk)_live_[A-Za-z0-9]{16,})\b/, reason: "Stripe live-mode key detected.", tags: ["stripe", "payment"] },
+  { id: "openai-key", type: "OpenAI API Key", category: "key", severity: "high", confidence: 0.95, pattern: /\b(sk-(?:proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{32,})\b/, reason: "OpenAI API key detected.", tags: ["openai", "api"] },
+  { id: "anthropic-key", type: "Anthropic API Key", category: "key", severity: "critical", confidence: 0.98, pattern: /\b(sk-ant-[A-Za-z0-9_-]{20,})\b/, reason: "Anthropic API key detected.", tags: ["anthropic", "api"] },
+  { id: "twilio-key", type: "Twilio API Key", category: "key", severity: "high", confidence: 0.9, pattern: /\b(SK[0-9a-f]{32})\b/i, reason: "Twilio API key format detected.", tags: ["twilio", "api"] },
+  { id: "discord-webhook", type: "Discord Webhook", category: "credential", severity: "high", confidence: 0.98, pattern: /https:\/\/discord(?:app)?\.com\/api\/webhooks\/\d+\/[A-Za-z0-9._-]+/i, reason: "Discord webhook URL detected.", tags: ["discord", "webhook"] },
+  { id: "slack-webhook", type: "Slack Webhook", category: "credential", severity: "high", confidence: 0.98, pattern: /https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9/_-]+/i, reason: "Slack webhook URL detected.", tags: ["slack", "webhook"] },
+  { id: "generic-secret", type: "Potential Hardcoded Secret", category: "secret", severity: "medium", confidence: 0.65, pattern: /\b(?:api[_-]?key|secret|token|password)\b\s*[:=]\s*["']([^"']{16,})["']/i, reason: "High-entropy value appears next to a sensitive configuration keyword.", tags: ["generic", "secret"] },
 ];
 
 export function classifyText(text: string, ctx: ClassifyContext = {}): Finding[] {

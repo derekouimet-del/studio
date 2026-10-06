@@ -1,144 +1,84 @@
 'use server';
 
-/**
- * @fileOverview A Genkit flow that functions as a web crawler and security scanner.
- * Now enhanced with a sophisticated rule-based secret classifier that returns full values.
- *
- * - crawlWebsite - A function that takes a target URL, fetches its content, and analyzes it for pages and secrets.
- * - CrawlWebsiteInput - The input type for the crawlWebsite function.
- * - CrawlWebsiteOutput - The return type for the crawlWebsite function.
- */
-
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
 import { classifyText } from '@/lib/secret-classifier';
 
 const PageResultSchema = z.object({
-  id: z.string(),
-  url: z.string().describe('The crawled URL path.'),
-  statusCode: z.number().describe('The HTTP status code of the page.'),
-  title: z.string().describe('The title of the page.'),
+  id: z.string(), url: z.string(), statusCode: z.number(), title: z.string(), depth: z.number(), fetched: z.boolean(),
 });
-
 const CredentialResultSchema = z.object({
-    id: z.string(),
-    source: z.string().describe('The source file or location where the credential was found.'),
-    type: z.string().describe('The type of credential (e.g., API Key, Password).'),
-    value: z.string().describe('The discovered credential value (full discovery).'),
-    severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
-    confidence: z.number().optional(),
-    reason: z.string().optional(),
+  id: z.string(), source: z.string(), type: z.string(), value: z.string(), severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(), confidence: z.number().optional(), reason: z.string().optional(),
 });
-
 const CrawlWebsiteInputSchema = z.object({
-  targetUrl: z.string().describe('The base URL to crawl.'),
+  targetUrl: z.string(), maxDepth: z.number().int().min(0).max(2).default(1), maxPages: z.number().int().min(1).max(25).default(12), sameOriginOnly: z.boolean().default(true),
 });
-export type CrawlWebsiteInput = z.infer<typeof CrawlWebsiteInputSchema>;
-
-const CrawlWebsiteOutputSchema = z.object({
-  pages: z.array(PageResultSchema).describe('A list of discovered pages.'),
-  credentials: z.array(CredentialResultSchema).describe('A list of discovered credentials or secrets.'),
-});
+export type CrawlWebsiteInput = z.input<typeof CrawlWebsiteInputSchema>;
+const CrawlWebsiteOutputSchema = z.object({ pages: z.array(PageResultSchema), credentials: z.array(CredentialResultSchema) });
 export type CrawlWebsiteOutput = z.infer<typeof CrawlWebsiteOutputSchema>;
 
-export async function crawlWebsite(input: CrawlWebsiteInput): Promise<CrawlWebsiteOutput> {
-  return crawlWebsiteFlow(input);
+type Page = z.infer<typeof PageResultSchema>;
+const crawlerHeaders = { 'User-Agent': 'Pen-Quest-Crawler/2.0' };
+const skipAsset = /\.(?:css|js|mjs|map|png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|pdf|zip|mp[34]|webm)(?:[?#].*)?$/i;
+
+function extractLinks(html: string, baseUrl: string, origin: string, sameOriginOnly: boolean) {
+  const links: { url: string; title: string }[] = [];
+  const pattern = /<a\b[^>]*href\s*=\s*(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a>/gi;
+  for (const match of html.matchAll(pattern)) {
+    const href = match[2].trim();
+    if (!href || /^(?:mailto:|tel:|javascript:|data:)/i.test(href) || href.startsWith('#')) continue;
+    try {
+      const url = new URL(href, baseUrl);
+      if (!/^https?:$/.test(url.protocol) || skipAsset.test(url.pathname) || (sameOriginOnly && url.origin !== origin)) continue;
+      url.hash = '';
+      const normalized = url.href;
+      if (!links.some((link) => link.url === normalized)) links.push({ url: normalized, title: match[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() || normalized });
+    } catch { /* ignore malformed URLs */ }
+  }
+  return links;
 }
 
-const analyzePageContentPrompt = ai.definePrompt({
-  name: 'analyzePageContentPrompt',
-  input: { schema: z.object({ targetUrl: z.string(), pageContent: z.string() }) },
-  output: { schema: CrawlWebsiteOutputSchema },
-  prompt: `You are a security scanner analyzing the content of {{{targetUrl}}}. The HTML content is below:
----
-{{{pageContent}}}
----
-From this HTML, do the following:
-1. Extract up to 10 interesting links (<a href...>) from the page. Convert relative URLs to absolute URLs using the targetUrl as the base. For each link, create a PageResult object. Assume a status code of 200. The page title should be extracted from the link's anchor text.
-2. Identify potential credentials, hardcoded passwords, or other sensitive data that look out of place.
-3. For all results, generate a unique 'id' string.
-4. Return a JSON object with 'pages' and 'credentials' arrays. If nothing is found, return empty arrays.`,
+async function fetchPage(url: string) {
+  const response = await fetch(url, { headers: crawlerHeaders, cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  const contentType = response.headers.get('content-type') || '';
+  const html = contentType.includes('text/html') ? await response.text() : '';
+  return { response, html };
+}
+
+export async function crawlWebsite(input: CrawlWebsiteInput): Promise<CrawlWebsiteOutput> {
+  return crawlWebsiteFlow({ targetUrl: input.targetUrl, maxDepth: input.maxDepth ?? 1, maxPages: input.maxPages ?? 12, sameOriginOnly: input.sameOriginOnly ?? true });
+}
+
+const crawlWebsiteFlow = ai.defineFlow({ name: 'crawlWebsiteFlow', inputSchema: CrawlWebsiteInputSchema, outputSchema: CrawlWebsiteOutputSchema }, async (input) => {
+  let url = input.targetUrl.trim();
+  if (!url) throw new Error('Enter a website URL to crawl.');
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  const rootUrl = new URL(url); rootUrl.hash = ''; url = rootUrl.href;
+  const maxDepth = input.maxDepth ?? 1, maxPages = input.maxPages ?? 12, sameOriginOnly = input.sameOriginOnly ?? true;
+  let rootFetch: Awaited<ReturnType<typeof fetchPage>>;
+  try { rootFetch = await fetchPage(url); } catch (error) { throw new Error(`Could not reach ${url}: ${error instanceof Error ? error.message : 'request failed'}`); }
+  if (!rootFetch.response.headers.get('content-type')?.includes('text/html')) throw new Error('The target returned a non-HTML response.');
+
+  const pages: Page[] = [{ id: 'root', url, statusCode: rootFetch.response.status, title: rootFetch.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || url, depth: 0, fetched: true }];
+  const credentials = classifyText(rootFetch.html, { url }).map((finding, i) => ({ id: `root-${i}`, source: url, type: finding.type, value: finding.value, severity: finding.severity, confidence: finding.confidence, reason: finding.reason }));
+  let frontier = extractLinks(rootFetch.html, url, rootUrl.origin, sameOriginOnly).map((link) => ({ ...link, depth: 1 }));
+  const seen = new Set([url]);
+  while (frontier.length && pages.filter((page) => page.fetched).length < maxPages) {
+    const batch = frontier.splice(0, Math.min(4, maxPages - pages.filter((page) => page.fetched).length));
+    const results = await Promise.all(batch.map(async (candidate, index) => {
+      if (seen.has(candidate.url)) return { candidate, index, result: null as Awaited<ReturnType<typeof fetchPage>> | null, error: true };
+      seen.add(candidate.url);
+      try { return { candidate, index, result: await fetchPage(candidate.url), error: false }; } catch { return { candidate, index, result: null, error: true }; }
+    }));
+    for (const { candidate, index, result, error } of results) {
+      if (error || !result) { pages.push({ id: `page-${pages.length}`, url: candidate.url, title: candidate.title, statusCode: 0, depth: candidate.depth, fetched: false }); continue; }
+      const title = result.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || candidate.title;
+      pages.push({ id: `page-${pages.length}`, url: candidate.url, title, statusCode: result.response.status, depth: candidate.depth, fetched: true });
+      credentials.push(...classifyText(result.html, { url: candidate.url }).map((finding, findingIndex) => ({ id: `${pages.length}-${index}-${findingIndex}`, source: candidate.url, type: finding.type, value: finding.value, severity: finding.severity, confidence: finding.confidence, reason: finding.reason })));
+      if (candidate.depth < maxDepth) frontier.push(...extractLinks(result.html, candidate.url, rootUrl.origin, sameOriginOnly).filter((link) => !seen.has(link.url)).map((link) => ({ ...link, depth: candidate.depth + 1 })));
+    }
+  }
+  for (const candidate of frontier) if (!pages.some((page) => page.url === candidate.url) && pages.length < maxPages + 50) pages.push({ id: `discovered-${pages.length}`, url: candidate.url, title: candidate.title, statusCode: 0, depth: candidate.depth, fetched: false });
+  return { pages, credentials };
 });
 
-const crawlWebsiteFlow = ai.defineFlow(
-  {
-    name: 'crawlWebsiteFlow',
-    inputSchema: CrawlWebsiteInputSchema,
-    outputSchema: CrawlWebsiteOutputSchema,
-  },
-  async ({ targetUrl }) => {
-    let pageContent: string;
-    let urlToFetch = targetUrl.trim();
-    if (!urlToFetch) throw new Error('Enter a website URL to crawl.');
-    if (!urlToFetch.startsWith('http://') && !urlToFetch.startsWith('https://')) {
-        urlToFetch = `https://${urlToFetch}`;
-    }
-
-    let response: Response;
-    try {
-        response = await fetch(urlToFetch, {
-            headers: { 'User-Agent': 'Pen-Quest-Crawler/1.0' },
-            cache: 'no-store',
-            signal: AbortSignal.timeout(15000),
-        });
-    } catch (e: any) {
-        throw new Error(`Could not reach ${urlToFetch}: ${e?.message || 'request failed'}`);
-    }
-
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('text/html')) {
-        throw new Error(`The target returned ${contentType || 'an unknown content type'}, not HTML.`);
-    }
-    pageContent = await response.text();
-
-    const rootPage = {
-      id: 'root',
-      url: urlToFetch,
-      statusCode: response.status,
-      title: pageContent.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || urlToFetch,
-    };
-    const discoveredPages = Array.from(pageContent.matchAll(/<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]*?)<\/a>/gi))
-      .map((match, index) => {
-        try {
-          const url = new URL(match[1].trim(), urlToFetch).href;
-          return { id: `link-${index}`, url, statusCode: 0, title: match[2].replace(/<[^>]+>/g, '').trim() || url };
-        } catch { return null; }
-      })
-      .filter((page): page is { id: string; url: string; statusCode: number; title: string } => Boolean(page))
-      .filter((page, index, pages) => pages.findIndex((candidate) => candidate.url === page.url) === index)
-      .slice(0, 50);
-    
-    // Step 1: Run the fast rule-based classifier
-    const findings = classifyText(pageContent, { url: urlToFetch });
-    const ruleBasedCredentials = findings.map((f, i) => ({
-      id: `rule-${i}`,
-      source: urlToFetch,
-      type: f.type,
-      value: f.value,
-      severity: f.severity,
-      confidence: f.confidence,
-      reason: f.reason,
-    }));
-
-    // Step 2: Run the AI prompt for link extraction and nuanced discovery
-    // AI pass is limited to prevent tokens/timeout issues, while Rule pass covers the whole page.
-    const AI_LIMIT = 50000;
-    const aiContent = pageContent.length > AI_LIMIT ? pageContent.substring(0, AI_LIMIT) : pageContent;
-
-    let aiOutput: any = { pages: [], credentials: [] };
-    try {
-        const {output} = await analyzePageContentPrompt({ targetUrl: urlToFetch, pageContent: aiContent });
-        if (output) aiOutput = output;
-    } catch (e) {
-        console.error("AI Crawl analysis failed:", e);
-    }
-    
-    // Merge results
-    const mergedCredentials = [...ruleBasedCredentials, ...(aiOutput.credentials || [])];
-
-    return {
-      pages: [rootPage, ...discoveredPages].filter((page, index, pages) => pages.findIndex((candidate) => candidate.url === page.url) === index),
-      credentials: mergedCredentials,
-    };
-  }
-);
