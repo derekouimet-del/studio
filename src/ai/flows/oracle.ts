@@ -1,13 +1,14 @@
 'use server';
 
 /**
- * @fileOverview Oracle AI assistant flow using Hugging Face's Meta-Llama model.
+ * @fileOverview Oracle AI assistant flow.
  *
  * - oracle - A function that sends messages to the Oracle AI assistant.
  * - OracleInput - The input type for the function.
  * - OracleOutput - The return type for the function.
  */
 
+import { generateText } from 'ai';
 import { z } from 'zod';
 
 const OracleInputSchema = z.object({
@@ -24,34 +25,13 @@ const OracleOutputSchema = z.object({
 export type OracleOutput = z.infer<typeof OracleOutputSchema>;
 
 export async function oracle(input: OracleInput): Promise<OracleOutput> {
-  const HF_TOKEN = process.env.HF_TOKEN;
-  
-  if (!HF_TOKEN) {
-    throw new Error('HF_TOKEN environment variable is not set.');
-  }
-
-  const response = await fetch('https://router.huggingface.co/featherless-ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${HF_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'mlabonne/Meta-Llama-3.1-8B-Instruct-abliterated',
-      messages: input.messages,
-      max_tokens: 1024,
-    }),
+  const result = await generateText({
+    model: 'openai/gpt-5.4',
+    messages: input.messages,
+    maxOutputTokens: 1024,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Hugging Face API error: ${response.status} - ${errorText}`);
-  }
-
-  const data = await response.json();
-  const assistantMessage = data.choices?.[0]?.message?.content || '';
-
   return {
-    response: assistantMessage,
+    response: result.text,
   };
 }
