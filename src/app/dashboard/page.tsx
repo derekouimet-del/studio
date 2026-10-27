@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Video,
   Telescope,
+  ListTree,
 } from 'lucide-react';
 import { CVEStatsCards } from '@/components/dashboard/cve-stats-cards';
 
@@ -83,6 +84,12 @@ const tools = [
     icon: Video,
     label: 'Video Vault',
     description: 'Download video files from direct media URLs to your device.',
+  },
+  {
+    href: '/model-discovery',
+    icon: ListTree,
+    label: 'Model Discovery',
+    description: 'Inspect the models exposed by OpenAI- and Anthropic-compatible endpoints.',
   },
 ];
 
