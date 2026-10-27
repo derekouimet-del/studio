@@ -22,32 +22,51 @@ export async function POST(request: NextRequest) {
 
     if (!provider || !baseUrl) return NextResponse.json({ error: 'Choose a provider and enter a base URL.' }, { status: 400 });
 
-    const url = new URL(baseUrl);
-    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('The URL must use HTTP or HTTPS.');
-    if (isPrivateAddress(url.hostname)) throw new Error('Private and local network addresses are not allowed.');
+    let url: URL;
+    try {
+      url = new URL(baseUrl);
+    } catch {
+      return NextResponse.json({ error: 'Enter a complete URL, such as https://api.openai.com/v1.' }, { status: 400 });
+    }
+    if (!['http:', 'https:'].includes(url.protocol)) return NextResponse.json({ error: 'The URL must use HTTP or HTTPS.' }, { status: 400 });
+    if (isPrivateAddress(url.hostname)) return NextResponse.json({ error: 'Private and local network addresses are not allowed from the hosted app.' }, { status: 400 });
 
     const path = url.pathname.replace(/\/+$/, '');
     if (!path.endsWith('/models')) url.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`;
     url.search = '';
+    url.hash = '';
 
     const headers: Record<string, string> = { Accept: 'application/json' };
-    if (provider === 'openai' && apiKey) headers.Authorization = `Bearer ${apiKey}`;
+    const configuredKey = apiKey || (provider === 'openai' ? process.env.OPENAI_API_KEY ?? '' : '');
+    if (provider === 'openai' && configuredKey) headers.Authorization = `Bearer ${configuredKey}`;
     if (provider === 'anthropic') {
       if (apiKey) headers['x-api-key'] = apiKey;
       headers['anthropic-version'] = '2023-06-01';
     }
 
-    const response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), cache: 'no-store' });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok) {
-      const detail = payload?.error?.message || payload?.error || `Endpoint returned ${response.status}.`;
-      return NextResponse.json({ error: String(detail) }, { status: response.status >= 400 && response.status < 500 ? response.status : 502 });
+    let response: Response;
+    try {
+      response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), cache: 'no-store' });
+    } catch (error) {
+      const message = error instanceof Error && error.name === 'TimeoutError'
+        ? 'The endpoint took too long to respond.'
+        : 'The endpoint could not be reached. Check the URL, DNS, TLS certificate, and whether it allows requests from a hosted server.';
+      return NextResponse.json({ error: message }, { status: 502 });
     }
 
-    const models = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
+    const raw = await response.text();
+    let payload: any = null;
+    try { payload = raw ? JSON.parse(raw) : null; } catch { /* handled below */ }
+    if (!response.ok) {
+      const detail = payload?.error?.message || payload?.error?.type || payload?.message || raw.slice(0, 300) || `Endpoint returned ${response.status}.`;
+      return NextResponse.json({ error: `${String(detail)} (HTTP ${response.status})` }, { status: response.status >= 400 && response.status < 500 ? response.status : 502 });
+    }
+    if (!payload || typeof payload !== 'object') return NextResponse.json({ error: 'The endpoint returned a successful response that was not valid JSON.' }, { status: 502 });
+
+    const models = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
     return NextResponse.json({ models: models.map((model: any) => ({ id: String(model.id ?? model.name ?? ''), ownedBy: model.owned_by ?? model.ownedBy ?? null, created: model.created ?? null })).filter((model: { id: string }) => model.id) });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to reach that endpoint.';
-    return NextResponse.json({ error: message.includes('Invalid URL') ? 'Enter a complete base URL, such as https://api.openai.com/v1.' : message }, { status: 400 });
+    const message = error instanceof Error ? error.message : 'Unable to query that endpoint.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
