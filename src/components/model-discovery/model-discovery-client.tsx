@@ -34,8 +34,8 @@ export function ModelDiscoveryClient() {
     try {
       const parsedUrl = new URL(baseUrl);
       const hostname = parsedUrl.hostname.toLowerCase();
-      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.localhost') || hostname.endsWith('.internal') || /^(10|192\\.168|169\\.254)\\./.test(hostname) || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(hostname);
-      const path = parsedUrl.pathname.replace(/\\/+$/, '');
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.localhost') || hostname.endsWith('.internal') || /^(10|192\.168|169\.254)\./.test(hostname) || /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname);
+      const path = parsedUrl.pathname.replace(/\/+$/, '');
       if (!path.endsWith('/models')) parsedUrl.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`;
       parsedUrl.search = '';
       parsedUrl.hash = '';
