@@ -28,15 +28,42 @@ export function ModelDiscoveryClient() {
     setError('');
   }
 
-  async function discover(event: FormEvent) {
-    event.preventDefault();
+  async function discover(event?: FormEvent) {
+    event?.preventDefault();
     setLoading(true); setError(''); setModels([]);
     try {
-      const response = await fetch('/api/model-discovery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, baseUrl, apiKey }) });
+      const parsedUrl = new URL(baseUrl);
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname.endsWith('.localhost') || hostname.endsWith('.internal') || /^(10|192\\.168|169\\.254)\\./.test(hostname) || /^172\\.(1[6-9]|2\\d|3[0-1])\\./.test(hostname);
+      const path = parsedUrl.pathname.replace(/\\/+$/, '');
+      if (!path.endsWith('/models')) parsedUrl.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`;
+      parsedUrl.search = '';
+      parsedUrl.hash = '';
+
+      let response: Response;
+      if (isLocal) {
+        const headers: Record<string, string> = { Accept: 'application/json' };
+        if (provider === 'openai' && apiKey) headers.Authorization = `Bearer ${apiKey}`;
+        if (provider === 'anthropic') {
+          if (apiKey) headers['x-api-key'] = apiKey;
+          headers['anthropic-version'] = '2023-06-01';
+        }
+        response = await fetch(parsedUrl.toString(), { headers, signal: AbortSignal.timeout(15_000) });
+      } else {
+        response = await fetch('/api/model-discovery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, baseUrl, apiKey }) });
+      }
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || 'Could not retrieve models.');
-      setModels(payload.models ?? []);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : 'Could not retrieve models.'); }
+      if (!response.ok) throw new Error(payload.error || `Endpoint returned HTTP ${response.status}.`);
+      const discovered = Array.isArray(payload.models) ? payload.models : Array.isArray(payload.data) ? payload.data : [];
+      setModels(discovered.map((model: { id?: string; name?: string; owned_by?: string; ownedBy?: string; created?: number }) => ({ id: String(model.id ?? model.name ?? ''), ownedBy: model.owned_by ?? model.ownedBy ?? null, created: model.created ?? null })).filter((model: Model) => model.id));
+    } catch (reason) {
+      const message = reason instanceof TypeError && baseUrl.includes('localhost')
+        ? 'Your local endpoint rejected the browser request (CORS). Allow this site in its CORS settings, or expose the endpoint over HTTPS.'
+        : reason instanceof Error && reason.name === 'TimeoutError'
+          ? 'The endpoint took too long to respond.'
+          : reason instanceof Error ? reason.message : 'Could not retrieve models.';
+      setError(message);
+    }
     finally { setLoading(false); }
   }
 
