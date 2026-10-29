@@ -344,6 +344,154 @@ SQLMap is an incredibly powerful and aggressive tool. It should **NEVER** be use
 `
   },
   {
+    id: 'fofa-dorks-cheat-sheet',
+    title: 'FOFA Dorks Cheat Sheet 2025–2026',
+    category: 'Reconnaissance',
+    description: 'A searchable field reference and query library for authorized asset discovery, exposure monitoring, and defensive reconnaissance with FOFA.',
+    content: `
+## FOFA Dorks Cheat Sheet
+
+Use these queries only against assets you own or have explicit permission to assess, including approved bug bounty scopes and internal security reviews. Treat matches as leads to validate—not proof of a vulnerability—and avoid accessing sensitive content.
+
+## Field Syntax
+
+| Field | Syntax | Use |
+| --- | --- | --- |
+| Title | \`title="keyword"\` | Page title content |
+| Body | \`body="keyword"\` | HTML body content |
+| Header | \`header="keyword"\` | HTTP response headers |
+| Domain | \`domain="example.com"\` | Root domain scope |
+| Host | \`host="app.example.com"\` | Exact hostname |
+| IP / range | \`ip="1.2.3.4"\` / \`ip="1.2.3.0/24"\` | Address or CIDR scope |
+| Port | \`port="443"\` | Open service port |
+| Protocol | \`protocol="http"\` | Service protocol |
+| Server | \`server="nginx"\` | Server fingerprint |
+| App | \`app="wordpress"\` | Fingerprinted application |
+| Certificate | \`cert.subject="example.com"\` | Certificate pivoting |
+| Country | \`country="US"\` | ISO country filter |
+| Favicon | \`icon_hash="1234567890"\` | Favicon hash pivot |
+| Path | \`path="/admin"\` | URL path match |
+| ASN / org | \`asn="13335"\` / \`org="Example"\` | Network ownership |
+
+Operators: \`&&\` (AND), \`||\` (OR), \`!\` (NOT), and parentheses for grouping.
+
+## Entry-Point Recon
+
+### Login and Administration
+
+\`title="login" && body="password"\`
+
+\`title="sign in" && body="username"\`
+
+\`title="admin" && (path="/admin" || path="/administrator" || path="/dashboard")\`
+
+\`title="wp-admin" || path="/wp-admin"\`
+
+\`title="phpmyadmin" || path="/phpmyadmin"\`
+
+### Application Fingerprints
+
+\`app="wordpress" && path="/wp-login.php"\`
+
+\`app="joomla" && path="/administrator"\`
+
+\`app="drupal" && path="/user/login"\`
+
+\`title="django administration"\`
+
+\`title="spring boot" && path="/actuator"\`
+
+## Exposure Monitoring
+
+### Configuration and CI/CD Files
+
+\`extension="env" && (body="DB_PASSWORD" || body="API_KEY" || body="SECRET_KEY")\`
+
+\`path="/.env" && (body="mysql" || body="postgres" || body="redis" || body="mongodb")\`
+
+\`path="/.git" && (body="index" || body="config" || body="HEAD")\`
+
+\`path="/.docker/config.json" && body="auths"\`
+
+\`path="/docker-compose.yml" && body="password:"\`
+
+\`path="/terraform.tfstate" && (body="password" || body="secret_key")\`
+
+\`path="/.gitlab-ci.yml" && body="token"\`
+
+\`path="/Jenkinsfile" && body="credentialsId"\`
+
+### Directories and Backups
+
+\`title="index of /" && (body="parent directory" || body="name") && !body="index.html"\`
+
+\`title="index of" && (extension="zip" || extension="bak" || extension="sql")\`
+
+\`extension="sql" && (body="mysql" || body="postgres" || body="mariadb")\`
+
+## Services and APIs
+
+### Databases and Message Queues
+
+\`port="9200" && protocol="http"\`
+
+\`port="27017" && body="It looks like you are trying to access MongoDB"\`
+
+\`port="6379" && protocol="redis"\`
+
+\`port="5432" && protocol="postgresql"\`
+
+\`port="3306" && protocol="mysql"\`
+
+\`port="5672" && protocol="amqp"\`
+
+\`port="9092" && protocol="kafka"\`
+
+### API Documentation
+
+\`title="swagger ui" || title="swagger-ui"\`
+
+\`path="/swagger.json" || path="/swagger.yaml" || path="/openapi.json"\`
+
+\`path="/api-docs" || path="/v2/api-docs" || path="/v3/api-docs"\`
+
+\`path="/graphql" && body="query"\`
+
+\`path="/graphiql" || path="/playground"\`
+
+## Cloud Storage Indicators
+
+\`body="NoSuchBucket" || body="AccessDenied" || body="ListBucketResult"\`
+
+\`body="s3.amazonaws.com" && body="AccessControlList"\`
+
+\`body="blob.core.windows.net" && body="EnumerationResults"\`
+
+\`body="storage.googleapis.com" && body="ListBucketResult"\`
+
+## Defensive Monitoring Templates
+
+Replace the placeholders with your organization’s approved scope before searching:
+
+\`org="Your Org Name" && (port="22" || port="3389" || port="445" || port="3306" || port="5432" || port="6379" || port="27017" || port="9200")\`
+
+\`domain="yourdomain.com" && (port="21" || port="22" || port="23" || port="135" || port="139" || port="445" || port="1433" || port="3306" || port="3389" || port="5432" || port="5900" || port="6379" || port="8080" || port="8443" || port="9200" || port="27017")\`
+
+\`cert.subject="yourdomain.com"\`
+
+\`cert.subject="*.yourdomain.com"\`
+
+## Practical Workflow
+
+1. Start with an explicit domain, host, ASN, organization, or approved IP range.
+2. Combine fields with \`&&\` to reduce false positives.
+3. Use \`!\` to exclude known legitimate services and third-party infrastructure.
+4. Validate ownership and scope before opening any result.
+5. Record the query, timestamp, result, and validation notes for your report.
+6. Report exposed secrets or personal data through the approved security channel; do not download or retain unnecessary sensitive content.
+`,
+  },
+  {
     id: 'venv-tutorial',
     title: 'Python Virtual Environments (venv)',
     category: 'Development',
