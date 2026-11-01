@@ -32,6 +32,7 @@ import {
   Video,
   Telescope,
   ListTree,
+  ImageIcon,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -71,6 +72,7 @@ const navItems = [
   { href: '/metaview', icon: Tag, label: 'MetaView' },
   { href: '/video-vault', icon: Video, label: 'Video Vault' },
   { href: '/model-discovery', icon: ListTree, label: 'Model Discovery' },
+  { href: '/any-image', icon: ImageIcon, label: 'Any_Image' },
   { href: '/arsenal', icon: Library, label: 'The Arsenal' },
   { href: '/reports', icon: FileText, label: 'Reports' },
   { href: '/about', icon: User, label: 'About Me' },
