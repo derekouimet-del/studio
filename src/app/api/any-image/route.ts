@@ -21,6 +21,28 @@ function serializeOutput(value: unknown): unknown {
   return value;
 }
 
+const SPACE_HOSTS: Record<keyof typeof SPACES, string> = {
+  anyImage: 'https://derekextra33-any-image.hf.space',
+  qwenImage: 'https://a-test-user-in-the-wrold-qwen-image-21-uncensored.hf.space',
+};
+
+async function toDataUrl(value: unknown, token: string, space: keyof typeof SPACES): Promise<string | null> {
+  const serialized = serializeOutput(value);
+  if (typeof serialized !== 'string') return null;
+  if (serialized.startsWith('data:image/')) return serialized;
+  const imageUrl = serialized.startsWith('/') ? `${SPACE_HOSTS[space]}${serialized}` : serialized;
+  if (!/^https?:\/\//i.test(imageUrl)) return null;
+
+  const response = await fetch(imageUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+  if (!response.ok) return null;
+  const contentType = response.headers.get('content-type') ?? 'image/png';
+  const bytes = Buffer.from(await response.arrayBuffer()).toString('base64');
+  return `data:${contentType};base64,${bytes}`;
+}
+
 export async function POST(request: Request) {
   const token = process.env.HF_TOKEN;
   if (!token) {
@@ -57,13 +79,17 @@ export async function POST(request: Request) {
     });
 
     const result = await client.predict<unknown[]>(apiName, inputs);
-    const output = result.data.map((item: unknown) => serializeOutput(item)).find((item: unknown) => typeof item === 'string' || (item && typeof item === 'object'));
+    const outputValue = result.data.flatMap((item: unknown) => (Array.isArray(item) ? item : [item])).find((item: unknown) => {
+      const serialized = serializeOutput(item);
+      return typeof serialized === 'string' && (/^https?:\/\//i.test(serialized) || serialized.startsWith('/') || serialized.startsWith('data:image/'));
+    });
+    const image = await toDataUrl(outputValue, token, selectedSpace);
 
-    if (!output) {
-      return NextResponse.json({ error: 'Any_Image returned no image output.' }, { status: 502 });
+    if (!image) {
+      return NextResponse.json({ error: 'Any_Image returned an image that could not be downloaded.' }, { status: 502 });
     }
 
-    return NextResponse.json({ image: output, endpoint: apiName });
+    return NextResponse.json({ image, endpoint: apiName });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Any_Image request failed.';
     return NextResponse.json({ error: message }, { status: 502 });
