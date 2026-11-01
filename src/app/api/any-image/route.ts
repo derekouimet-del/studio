@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server';
 
 export const maxDuration = 300;
 
-const SPACE = 'https://huggingface.co/spaces/derekextra33/Any_Image';
+const SPACES = {
+  anyImage: 'https://huggingface.co/spaces/derekextra33/Any_Image',
+  qwenImage: 'https://huggingface.co/spaces/a-test-user-in-the-wrold/qwen-image-21-uncensored',
+} as const;
 
 function findPromptIndex(parameters: Array<{ label?: string; parameter_name?: string }>) {
   return parameters.findIndex((parameter) =>
@@ -25,12 +28,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { prompt } = (await request.json()) as { prompt?: string };
+    const { prompt, space = 'anyImage' } = (await request.json()) as { prompt?: string; space?: keyof typeof SPACES };
+    const selectedSpace = space in SPACES ? space : 'anyImage';
     if (!prompt?.trim()) {
       return NextResponse.json({ error: 'A prompt is required.' }, { status: 400 });
     }
 
-    const client = await Client.connect(SPACE, { hf_token: token as `hf_${string}` });
+    const client = await Client.connect(SPACES[selectedSpace], { hf_token: token as `hf_${string}` });
     const api = await client.view_api();
     const namedEndpoints = Object.entries(api.named_endpoints ?? {});
     const endpoint = namedEndpoints.find(([, definition]) => findPromptIndex(definition.parameters ?? []) >= 0) ?? namedEndpoints[0];

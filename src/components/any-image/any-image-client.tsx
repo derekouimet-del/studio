@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 export function AnyImageClient() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
+  const [space, setSpace] = useState<'anyImage' | 'qwenImage'>('anyImage');
   const [image, setImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -26,7 +27,7 @@ export function AnyImageClient() {
       const response = await fetch('/api/any-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, space }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Image generation failed.');
@@ -47,6 +48,17 @@ export function AnyImageClient() {
           <CardDescription>Send a prompt to your private Any_Image Hugging Face Space.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
+          <Label htmlFor="any-image-model">Model</Label>
+          <select
+            id="any-image-model"
+            value={space}
+            onChange={(event) => setSpace(event.target.value as 'anyImage' | 'qwenImage')}
+            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            disabled={isGenerating}
+          >
+            <option value="anyImage">Any_Image</option>
+            <option value="qwenImage">Qwen Image 2.1 Uncensored</option>
+          </select>
           <Label htmlFor="any-image-prompt">Prompt</Label>
           <Textarea id="any-image-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="A cinematic reconnaissance map of a neon city at night..." className="min-h-36 resize-y" />
         </CardContent>
