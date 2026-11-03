@@ -32,14 +32,17 @@ export function KeyCheckClient() {
   async function checkKey(event: FormEvent) {
     event.preventDefault();
     setLoading(true); setError(''); setResult(null);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     try {
-      const response = await fetch('/api/key-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, apiKey }) });
+      const response = await fetch('/api/key-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, apiKey }), signal: controller.signal });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || 'Unable to check this key.');
       setResult(payload);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Unable to check this key.');
-    } finally { setLoading(false); }
+      setError(reason instanceof DOMException && reason.name === 'AbortError' ? 'The provider took too long to respond. Try again.' : reason instanceof Error ? reason.message : 'Unable to check this key.');
+    } finally {
+      window.clearTimeout(timeout); setLoading(false); }
   }
 
   return <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">

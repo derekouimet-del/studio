@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 type Provider = 'openrouter' | 'openai' | 'anthropic' | 'google';
 
 const PROVIDERS: Record<Provider, { label: string; modelsUrl: string; creditsUrl?: string }> = {
