@@ -3,6 +3,8 @@ import { isIP } from 'node:net';
 import { reverse } from 'node:dns/promises';
 import { Agent } from 'undici';
 
+export const runtime = 'nodejs';
+
 const PRIVATE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '0.0.0.0']);
 
 function isPrivateAddress(hostname: string) {
