@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isIP } from 'node:net';
 import { reverse } from 'node:dns/promises';
+import { request as httpsRequest } from 'node:https';
+import type { TLSSocket } from 'node:tls';
 import { Agent } from 'undici';
 
 export const runtime = 'nodejs';
@@ -15,6 +17,34 @@ function isPrivateAddress(hostname: string) {
     return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a === 169 && b === 254;
   }
   return false;
+}
+
+async function hostnameFromCertificate(url: URL) {
+  if (url.protocol !== 'https:' || !isIP(url.hostname)) return null;
+
+  return new Promise<string | null>((resolve) => {
+    const request = httpsRequest({
+      hostname: url.hostname,
+      port: url.port || 443,
+      path: '/',
+      method: 'HEAD',
+      rejectUnauthorized: false,
+      timeout: 5_000,
+    }, (response) => {
+      const certificate = (response.socket as TLSSocket).getPeerCertificate();
+      response.resume();
+      const names = typeof certificate.subjectaltname === 'string'
+        ? certificate.subjectaltname.split(',').map((entry: string) => entry.trim().replace(/^DNS:/i, ''))
+        : [];
+      resolve(names.find((name: string) => name && !name.includes('*') && !isPrivateAddress(name)) ?? null);
+    });
+    request.on('error', () => resolve(null));
+    request.on('timeout', () => {
+      request.destroy();
+      resolve(null);
+    });
+    request.end();
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -37,15 +67,15 @@ export async function POST(request: NextRequest) {
     if (isPrivateAddress(url.hostname)) return NextResponse.json({ error: 'Private and local network addresses are not allowed from the hosted app.' }, { status: 400 });
 
     if (isIP(url.hostname)) {
+      let candidate: string | null = null;
       try {
         const hostnames = await reverse(url.hostname);
-        const candidate = hostnames.find((hostname) => hostname && !isPrivateAddress(hostname));
-        if (candidate) {
-          url.hostname = candidate;
-        }
+        candidate = hostnames.find((hostname) => hostname && !isPrivateAddress(hostname)) ?? null;
       } catch {
-        // A PTR record is optional; continue with the numeric address when absent.
+        // A PTR record is optional; fall back to the certificate below.
       }
+      candidate ??= await hostnameFromCertificate(url);
+      if (candidate) url.hostname = candidate;
     }
 
     const path = url.pathname.replace(/\/+$/, '');
