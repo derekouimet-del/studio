@@ -1,7 +1,7 @@
 'use client';
 
 import { ChangeEvent, FormEvent, useState } from 'react';
-import { AlertCircle, CheckCircle2, Copy, Database, FileUp, KeyRound, Loader2, Search, Upload } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Copy, Database, FileUp, KeyRound, Loader2, Search, ShieldAlert } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 
 interface Model { id: string; ownedBy: string | null; created: number | null }
 interface LookupResult { url: string; models: Model[]; error?: string }
@@ -27,6 +28,7 @@ export function ModelDiscoveryClient() {
   const [batchResults, setBatchResults] = useState<LookupResult[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [skipTlsVerification, setSkipTlsVerification] = useState(false);
 
   function selectProvider(value: string) {
     const next = value as 'openai' | 'anthropic';
@@ -43,13 +45,13 @@ export function ModelDiscoveryClient() {
     if (!path.endsWith('/models')) parsedUrl.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`;
     parsedUrl.search = ''; parsedUrl.hash = '';
     let response: Response;
-    if (isLocal) {
+    if (isLocal && !skipTlsVerification) {
       const headers: Record<string, string> = { Accept: 'application/json' };
       if (provider === 'openai' && apiKey) headers.Authorization = `Bearer ${apiKey}`;
       if (provider === 'anthropic') { if (apiKey) headers['x-api-key'] = apiKey; headers['anthropic-version'] = '2023-06-01'; }
       response = await fetch(parsedUrl.toString(), { headers, signal: AbortSignal.timeout(15_000) });
     } else {
-      response = await fetch('/api/model-discovery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, baseUrl: url, apiKey }) });
+      response = await fetch('/api/model-discovery', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ provider, baseUrl: url, apiKey, skipTlsVerification }) });
     }
     const payload = await response.json();
     if (!response.ok) throw new Error(payload.error || `Endpoint returned HTTP ${response.status}.`);
@@ -82,9 +84,10 @@ export function ModelDiscoveryClient() {
   return <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
     <Card className="h-fit"><CardHeader><div className="mb-2 flex size-11 items-center justify-center rounded-lg bg-primary/15 text-primary"><Search /></div><CardTitle>Model Discovery</CardTitle><CardDescription>Inspect one or many OpenAI or Anthropic-compatible API endpoints.</CardDescription></CardHeader><CardContent><form onSubmit={discover} className="flex flex-col gap-5">
       <div className="flex flex-col gap-2"><Label>Endpoint type</Label><Tabs value={provider} onValueChange={selectProvider}><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="openai">OpenAI compatible</TabsTrigger><TabsTrigger value="anthropic">Anthropic compatible</TabsTrigger></TabsList><TabsContent value="openai" className="mt-2 text-xs text-muted-foreground">Queries <code>/v1/models</code> with Bearer authentication.</TabsContent><TabsContent value="anthropic" className="mt-2 text-xs text-muted-foreground">Queries <code>/v1/models</code> with Anthropic headers.</TabsContent></Tabs></div>
-      <div className="flex flex-col gap-2"><Label htmlFor="base-url">Base URL</Label><Input id="base-url" type="url" value={baseUrl} onChange={(event) => { setBaseUrl(event.target.value); setBatchInput(''); }} placeholder="https://api.example.com/v1" required /><p className="text-xs text-muted-foreground">For a batch, paste one base URL per line below.</p></div>
+      <div className="flex flex-col gap-2"><Label htmlFor="base-url">Base URL</Label><Input id="base-url" type="url" value={baseUrl} onChange={(event) => { setBaseUrl(event.target.value); setBatchInput(''); }} placeholder="https://api.example.com/v1" required /><p className="text-xs text-muted-foreground">For a batch, paste one base URL per line below. Public numeric IPs are reverse-resolved when possible so TLS can use the endpoint&apos;s hostname.</p></div>
       <div className="flex flex-col gap-2"><Label htmlFor="batch-input">Batch URLs <span className="font-normal text-muted-foreground">(optional)</span></Label><Textarea id="batch-input" value={batchInput} onChange={(event) => setBatchInput(event.target.value)} placeholder={'https://api.openai.com/v1\nhttps://my-provider.example/v1'} rows={5} /><div className="flex items-center justify-between gap-3"><p className="text-xs text-muted-foreground">{normalizeUrls(batchInput).length} URL{normalizeUrls(batchInput).length === 1 ? '' : 's'} ready</p><label htmlFor="url-file" className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-medium text-primary hover:underline"><FileUp className="size-3.5" /> Upload .txt</label><input id="url-file" type="file" accept=".txt,text/plain" className="sr-only" onChange={importFile} /></div></div>
       <div className="flex flex-col gap-2"><Label htmlFor="api-key">API key <span className="font-normal text-muted-foreground">(optional)</span></Label><div className="relative"><KeyRound className="absolute left-3 top-2.5 size-4 text-muted-foreground" /><Input id="api-key" type="password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} className="pl-9" placeholder="sk-…" autoComplete="off" /></div><p className="text-xs text-muted-foreground">Used only for these requests and never stored.</p></div>
+      <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3"><div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-500" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-3"><Label htmlFor="skip-tls" className="cursor-pointer">Skip TLS certificate verification</Label><Switch id="skip-tls" checked={skipTlsVerification} onCheckedChange={setSkipTlsVerification} disabled={loading} /></div><p className="mt-1 text-xs text-muted-foreground">Like curl&apos;s <code>-k</code>: useful for internal or self-signed endpoints, but it makes HTTPS vulnerable to man-in-the-middle attacks. Use only when you trust the network and endpoint.</p></div></div></div>
       <Button type="submit" disabled={loading}>{loading ? <Loader2 className="animate-spin" data-icon="inline-start" /> : <Database data-icon="inline-start" />}{loading ? 'Checking endpoints…' : batchInput ? `Discover ${normalizeUrls(batchInput).length} endpoint${normalizeUrls(batchInput).length === 1 ? '' : 's'}` : 'Discover models'}</Button>
     </form></CardContent></Card>
     <Card className="min-h-[420px]"><CardHeader className="flex-row items-start justify-between gap-4"><div><CardTitle>Available models</CardTitle><CardDescription>{batchResults.length > 1 ? `${totalModels} model${totalModels === 1 ? '' : 's'} found across ${batchResults.length} endpoints.` : models.length ? `${models.length} model${models.length === 1 ? '' : 's'} returned by the endpoint.` : 'Results will appear here after a successful lookup.'}</CardDescription></div>{totalModels > 0 || models.length > 0 ? <Badge variant="secondary"><CheckCircle2 className="mr-1 size-3" /> Connected</Badge> : null}</CardHeader><CardContent>

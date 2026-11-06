@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isIP } from 'node:net';
+import { reverse } from 'node:dns/promises';
+import { Agent } from 'undici';
 
 const PRIVATE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '0.0.0.0']);
 
@@ -19,6 +21,7 @@ export async function POST(request: NextRequest) {
     const provider = body?.provider === 'anthropic' ? 'anthropic' : body?.provider === 'openai' ? 'openai' : null;
     const baseUrl = typeof body?.baseUrl === 'string' ? body.baseUrl.trim() : '';
     const apiKey = typeof body?.apiKey === 'string' ? body.apiKey.trim() : '';
+    const skipTlsVerification = body?.skipTlsVerification === true;
 
     if (!provider || !baseUrl) return NextResponse.json({ error: 'Choose a provider and enter a base URL.' }, { status: 400 });
 
@@ -30,6 +33,18 @@ export async function POST(request: NextRequest) {
     }
     if (!['http:', 'https:'].includes(url.protocol)) return NextResponse.json({ error: 'The URL must use HTTP or HTTPS.' }, { status: 400 });
     if (isPrivateAddress(url.hostname)) return NextResponse.json({ error: 'Private and local network addresses are not allowed from the hosted app.' }, { status: 400 });
+
+    if (isIP(url.hostname)) {
+      try {
+        const hostnames = await reverse(url.hostname);
+        const candidate = hostnames.find((hostname) => hostname && !isPrivateAddress(hostname));
+        if (candidate) {
+          url.hostname = candidate;
+        }
+      } catch {
+        // A PTR record is optional; continue with the numeric address when absent.
+      }
+    }
 
     const path = url.pathname.replace(/\/+$/, '');
     if (!path.endsWith('/models')) url.pathname = `${path.endsWith('/v1') ? path : `${path}/v1`}/models`;
@@ -46,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     let response: Response;
     try {
-      response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), cache: 'no-store' });
+      response = await fetch(url, { headers, signal: AbortSignal.timeout(15_000), cache: 'no-store', ...(skipTlsVerification ? { dispatcher: new Agent({ connect: { rejectUnauthorized: false } }) } : {}) });
     } catch (error) {
       const message = error instanceof Error && error.name === 'TimeoutError'
         ? 'The endpoint took too long to respond.'
